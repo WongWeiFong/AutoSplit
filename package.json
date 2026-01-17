@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "@prisma/client": "^7.2.0",
+    "@supabase/supabase-js": "^2.90.1",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "prisma": "^7.2.0"
+  },
+  "overrides": {
+    "hono": "^4.11.4"
+  }
+}
