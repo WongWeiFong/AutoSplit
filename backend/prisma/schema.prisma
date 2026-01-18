@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @map("id")
+  name      String?  
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  bills     Bill[]   @relation("UserBills")
+  participants Participant[]
+  @@map("users")
+}
+
+model Bill {
+  id           String       @id @default(uuid()) @map("id")
+  title        String       @map("title")
+  merchantName String?      @map("merchant_name")
+  totalAmount  Decimal?     @map("total_amount")
+  createdById  String       @map("created_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  createdBy    User         @relation("UserBills", fields: [createdById], references: [id])
+  items        BillItem[]
+  participants Participant[]
+  receipt      Receipt?
+  splitRules   SplitRule[]
+  @@map("bills")
+}
+
+model BillItem {
+  id         String   @id @default(uuid()) @map("id")
+  billId     String   @map("bill_id")
+  name       String   @map("name")
+  quantity   Decimal? @map("quantity")
+  unitPrice  Decimal? @map("unit_price")
+  totalPrice Decimal? @map("total_price")
+  description String? @map("description")
+
+  bill       Bill     @relation(fields: [billId], references: [id])
+  @@map("bill_items")
+}
+
+model Participant {
+  id         String   @id @default(uuid()) @map("id")
+  billId     String   @map("bill_id")
+  userId     String?  @map("user_id")
+  displayName String  @map("display_name")
+
+  bill       Bill     @relation(fields: [billId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+  splitRules SplitRule[]
+  @@map("participants")
+}
+
+model SplitRule {
+  id            String   @id @default(uuid()) @map("id")
+  participantId String   @map("participant_id")
+  billId        String   @map("bill_id")
+  type          String   @map("type") // "EQUAL" | "CUSTOM"
+  amount        Decimal? @map("amount")
+
+  participant   Participant @relation(fields: [participantId], references: [id])
+  bill          Bill        @relation(fields: [billId], references: [id])
+  @@map("split_rules")
+}
+
+model Receipt {
+  id          String   @id @default(uuid()) @map("id")
+  billId      String   @unique @map("bill_id")
+  imageUrl    String?  @map("image_url")
+  rawOcrText  String?  @map("raw_ocr_text")
+  aiParsedJson Json?    @map("ai_parsed_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  bill        Bill     @relation(fields: [billId], references: [id])
+  @@map("receipts")
+}
