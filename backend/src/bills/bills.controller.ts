@@ -9,6 +9,7 @@ export class BillsController {
 
   @Post()
   create(@Req() req, @Body() body: any) {
-    return this.billsService.createBill(req.user.id, body);
+    const userId = req.user.id;
+    return this.billsService.createBill(userId, body);
   }
 }
