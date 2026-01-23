@@ -2,10 +2,20 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import Tesseract from 'tesseract.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import sharp from 'sharp';
 
 @Injectable()
 export class ReceiptsService {
   private genAI: GoogleGenerativeAI;
+
+  private async preprocessImage(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer)
+      .grayscale()
+      .normalize()
+      .resize({ width: 1800 }) // upscale improves small fonts
+      .threshold(150)          // makes text pop
+      .toBuffer();
+  }
 
   constructor(private readonly prisma: PrismaService) {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -67,8 +77,14 @@ export class ReceiptsService {
   // OCR WITH TESSERACT
   // =========================
   private async runTesseract(imageBuffer: Buffer): Promise<string> {
+    const processed = await this.preprocessImage(imageBuffer);
     const worker = await Tesseract.createWorker('eng');
-
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
+    });
+    
+    await worker.reinitialize('eng');
+    await worker.recognize(processed);
     try {
       const {
         data: { text },
@@ -89,18 +105,51 @@ export class ReceiptsService {
     });
 
     const prompt = `
-You are a receipt parser.
+You are a receipt understanding engine.
 
-From the OCR text below, extract:
-- merchantName
-- items: [{ name, quantity, unitPrice, totalPrice }]
-- totalAmount
+The OCR text below might be noisy and imperfect.
+Ignore payment terminal data, card numbers, approvals, batch numbers, and merchant footer text.
 
-Return ONLY valid JSON.
+Focus ONLY on:
+- Items name such as food, drinks, goods, etc. Anything could be included in the item name as the receipt could be from different merchants.
+- Quantities
+- Discounts (negative prices)
+- Subtotal
+- Total paid
+
+Rules:
+- Discounts are items with negative prices
+- Items without prices belong to previous item, it must be description/details of the previous item, however some items might have a price which is negative, means that it is a discount of the previous item, therefore mark it as details/description of the items
+- Item's description/details should be written in description field, each description should be separated by a new line
+- Infer quantities if missing, if the quantity is not mentioned, assume it is 1
+- Ignore VISA / APPROVED / CARD / BATCH / MID / RREF
+- Ignore address lines
+- Ignore Telephone numbers, email addresses, Merchant's details except for the name
+
+Return JSON in this format ONLY:
+{
+  "merchantName": string | null,
+  "items": [
+    {
+      "name": string,
+      "quantity": number,
+      "unitPrice": number | null,
+      "discount": number | null,
+      "totalPrice": number,
+      "description": string | null,
+    }
+  ],
+  "subtotal": number | null,
+  "tax": number | null,
+  "discount": -number | null,
+  "rounding": +number | -number | null,
+  "totalAmount": number | null
+}
 
 OCR TEXT:
 ${rawText}
 `;
+
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

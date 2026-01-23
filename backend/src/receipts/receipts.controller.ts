@@ -22,7 +22,6 @@ export class ReceiptsController {
   async uploadReceipt(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
-    @Body('billId') billId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('Receipt image file is required');
@@ -33,7 +32,6 @@ export class ReceiptsController {
     return this.receiptsService.uploadAndProcessReceipt(
       file,
       userId,
-      // billId ?? '',
     );
   }
 }
