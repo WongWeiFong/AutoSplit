@@ -1,113 +1,118 @@
-// src/receipts/receipts.service.ts
-import { Injectable } from '@nestjs/common';
-import type { Express } from 'express';
-import { createClient } from '@supabase/supabase-js';
-import * as crypto from 'crypto';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import Tesseract from 'tesseract.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class ReceiptsService {
-  private supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! // IMPORTANT: service role, not anon
-  );
+  private genAI: GoogleGenerativeAI;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+  }
 
-  async processReceipt(
+  async uploadAndProcessReceipt(
     file: Express.Multer.File,
     userId: string,
-    billId: string,
   ) {
-    // 1️⃣ Upload image
-    const filePath = `${userId}/${crypto.randomUUID()}.jpg`;
-
-    const { error } = await this.supabase.storage
-      .from('receipts')
-      .upload(filePath, file.buffer, {
-        contentType: file.mimetype,
+    try {
+      // 0️⃣ Ensure user exists (FK safe)
+      await this.prisma.user.upsert({
+        where: { id: userId },
+        update: {},
+        create: { id: userId },
       });
 
-    if (error) throw error;
-
-    const imageUrl = this.supabase.storage
-      .from('receipts')
-      .getPublicUrl(filePath).data.publicUrl;
-
-    // 2️⃣ MOCK OCR output
-    const rawOcrText = `
-      Sushi World
-      Salmon Sushi x4 80.00
-      Tuna Roll x8 100.00
-      TOTAL 180.00
-    `;
-
-    // 3️⃣ MOCK AI parsed result
-    const aiParsedJson = {
-      merchant: 'Sushi World',
-      currency: 'MYR',
-      total: 180,
-      items: [
-        { name: 'Salmon Sushi', quantity: 4, price: 80 },
-        { name: 'Tuna Roll', quantity: 8, price: 100 },
-      ],
-    };
-
-    // 4️⃣ Save receipt
-    const receipt = await this.prisma.receipt.create({
-      data: {
-        billId,
-        imageUrl,
-        rawOcrText,
-        aiParsedJson,
-      },
-    });
-    console.log('STEP 1: Receipt created');    
-
-    const parsed = aiParsedJson;
-    console.log('AI parsed items:', parsed?.items);
-
-    await this.prisma.$transaction(async (tx) => {
-      // Delete old receipt(s) according to same bill Id
-      await tx.receipt.deleteMany({
-        where: { billId },
-      });
-    
-      // Delete old bill items according to same bill Id
-      await tx.billItem.deleteMany({
-        where: { billId },
-      });
-    
-      // Insert new receipt into receipt table
-      const receipt = await tx.receipt.create({
+      // 1️⃣ Create Bill
+      const bill = await this.prisma.bill.create({
         data: {
-          billId,
-          imageUrl,
-          rawOcrText,
-          aiParsedJson,
+          title: 'Receipt Upload',
+          createdById: userId,
         },
       });
-    
-      // 4️⃣ Insert new bill items
-      if (parsed?.items?.length) {
-        await tx.billItem.createMany({
-          data: parsed.items.map((item) => ({
-            billId,
-            name: item.name,
-            quantity: item.quantity ?? 1,
-            unitPrice: item.price / (item.quantity ?? 1),
-            totalPrice: item.price,
-          })),
-        });
-      }
+
+      // 2️⃣ Create Receipt row
+      const receipt = await this.prisma.receipt.create({
+        data: {
+          billId: bill.id,
+        },
+      });
+
+      // 3️⃣ OCR (BUFFER, not path)
+      const rawText = await this.runTesseract(file.buffer);
+
+      // 4️⃣ Gemini AI cleanup
+      const aiJson = await this.processWithGemini(rawText);
+
+      // 5️⃣ Save OCR + AI result
+      await this.prisma.receipt.update({
+        where: { id: receipt.id },
+        data: {
+          rawOcrText: rawText,
+          aiParsedJson: aiJson,
+        },
+      });
+
+      return {
+        billId: bill.id,
+        parsedData: aiJson,
+      };
+    } catch (err) {
+      console.error(err);
+      throw new InternalServerErrorException('Receipt processing failed');
+    }
+  }
+
+  // =========================
+  // OCR WITH TESSERACT
+  // =========================
+  private async runTesseract(imageBuffer: Buffer): Promise<string> {
+    const worker = await Tesseract.createWorker('eng');
+
+    try {
+      const {
+        data: { text },
+      } = await worker.recognize(imageBuffer);
+
+      return text;
+    } finally {
+      await worker.terminate();
+    }
+  }
+
+  // =========================
+  // GEMINI AI PROCESSING
+  // =========================
+  private async processWithGemini(rawText: string): Promise<any> {
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
     });
 
-    return {
-      message: 'Receipt uploaded (mock processed)',
-      receiptId: receipt.id,
-      imageUrl,
-      rawOcrText,
-      aiParsedJson,
-    };
+    const prompt = `
+You are a receipt parser.
+
+From the OCR text below, extract:
+- merchantName
+- items: [{ name, quantity, unitPrice, totalPrice }]
+- totalAmount
+
+Return ONLY valid JSON.
+
+OCR TEXT:
+${rawText}
+`;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
+    try {
+      return JSON.parse(responseText);
+    } catch {
+      const match = responseText.match(/\{[\s\S]*\}/);
+      if (!match) {
+        throw new Error('Gemini returned invalid JSON');
+      }
+      return JSON.parse(match[0]);
+    }
   }
 }
