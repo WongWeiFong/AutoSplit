@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import Tesseract from 'tesseract.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
+import { v4 as uuid } from 'uuid';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class ReceiptsService {
@@ -17,7 +19,9 @@ export class ReceiptsService {
       .toBuffer();
   }
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService, 
+    private readonly supabaseService: SupabaseService) {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   }
 
@@ -54,10 +58,35 @@ export class ReceiptsService {
       // 4️⃣ Gemini AI cleanup
       const aiJson = await this.processWithGemini(rawText);
 
+
+      const fileExt = file.originalname.split('.').pop();
+      const fileName = `${userId}/${uuid()}.${fileExt}`;
+      const { error } = await this.supabaseService.storage
+      .from('receipts')
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error('Failed to upload receipt image');
+    }
+
+    // const { data } = this.supabaseService.storage
+    //   .from('receipts')
+    //   .getPublicUrl(fileName);
+    //   const imageUrl = data.publicUrl;
+
+      const { data } = await this.supabaseService.storage
+      .from('receipts')
+      .createSignedUrl(fileName, 60 * 60);
+      const imageUrl = data?.signedUrl ?? null; 
+
       // 5️⃣ Save OCR + AI result
       await this.prisma.receipt.update({
         where: { id: receipt.id },
         data: {
+          imageUrl,
           rawOcrText: rawText,
           aiParsedJson: aiJson,
         },

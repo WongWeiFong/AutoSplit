@@ -6,15 +6,18 @@ import { PrismaModule } from './prisma/prisma.module';
 import { BillsModule } from './bills/bills.module';
 import { ConfigModule } from '@nestjs/config';
 import { ReceiptsModule } from './receipts/receipts.module';
+import { SupabaseModule } from './supabase/supabase.module';
+
 
 @Module({
   imports: [PrismaModule, BillsModule, ConfigModule.forRoot({
     isGlobal: true,
-  }), ReceiptsModule,],
+  }), ReceiptsModule, SupabaseModule],
   // controllers: [AppController],
   // controllers: [],
   controllers: [TestController],
   providers: [],
   // providers: [AppService],
 })
+
 export class AppModule {}
