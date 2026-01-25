@@ -130,7 +130,10 @@ export class ReceiptsService {
   // =========================
   private async processWithGemini(rawText: string): Promise<any> {
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      // model: 'gemini-2.0-flash',
+      // model: 'gemini-2.5-flash', // higher accuracy but slower
+      // model: 'gemini-2.5-flash-lite', // lesser accuracy but faster
+      model: 'gemini-3-flash-preview',
     });
 
     const prompt = `
@@ -148,12 +151,15 @@ Focus ONLY on:
 
 Rules:
 - Discounts are items with negative prices
-- Items without prices belong to previous item, it must be description/details of the previous item, however some items might have a price which is negative, means that it is a discount of the previous item, therefore mark it as details/description of the items
+- Items without prices written belongs to previous item, it must be written in description/details of the previous item
+- Items have a price with negative value, is a discount of the previous item, it should be marked it as details/description of the items
 - Item's description/details should be written in description field, each description should be separated by a new line
 - Infer quantities if missing, if the quantity is not mentioned, assume it is 1
 - Ignore VISA / APPROVED / CARD / BATCH / MID / RREF
 - Ignore address lines
 - Ignore Telephone numbers, email addresses, Merchant's details except for the name
+- For discounts, please add the negative value to the total amount
+- For tax, please add the (tax + service charges) to the total amount
 
 Return JSON in this format ONLY:
 {
@@ -170,7 +176,7 @@ Return JSON in this format ONLY:
   ],
   "subtotal": number | no,
   "tax": number | 0,
-  "discount": -number | 0,
+  "discount": number | 0,
   "rounding": +number | -number | 0,
   "totalAmount": number | no
 }

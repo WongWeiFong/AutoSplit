@@ -41,6 +41,7 @@ model BillItem {
   unitPrice   Decimal?    @map("unit_price")
   totalPrice  Decimal?    @map("total_price")
   description String?     @map("description")
+  discount    Decimal?    @map("discount")
   bill        Bill        @relation(fields: [billId], references: [id])
   splitRules  SplitRule[]
 

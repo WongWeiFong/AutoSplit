@@ -3,10 +3,50 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { CreateParticipantDto } from './dto/create-participant.dto';
 import { CreateSplitRuleDto } from './dto/create-split-rule.dto';
+import { ConfirmBillDto } from './dto/confirm-bill.dto';
 
 @Injectable()
 export class BillsService {
   constructor(private readonly prisma: PrismaService) {}
+  async confirmBill(billId: string, dto: ConfirmBillDto) {
+    return this.prisma.$transaction(async (tx) => {
+  
+      // 1️⃣ Update bill summary
+      await tx.bill.update({
+        where: { id: billId },
+        data: {
+          title: dto.title,
+          merchantName: dto.merchantName,
+          totalAmount: dto.totalAmount,
+        },
+      });
+  
+      // 2️⃣ Remove old items (important for re-submit later)
+      await tx.billItem.deleteMany({
+        where: { billId },
+      })
+  
+      // 3️⃣ Insert new items
+      await tx.billItem.createMany({
+        data: dto.items.map(item => ({
+          id: item.id,
+          billId,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount,
+          totalPrice: item.totalPrice,
+          description: item.description,
+        })),
+      })
+  
+      return {
+        billId,
+        status: 'CONFIRMED',
+      };
+    })
+  }
+  
 
   async createBill(userId: string, dto: CreateBillDto) {
 
