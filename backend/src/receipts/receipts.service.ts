@@ -162,17 +162,17 @@ Return JSON in this format ONLY:
     {
       "name": string,
       "quantity": number,
-      "unitPrice": number | null,
-      "discount": number | null,
+      "unitPrice": number | 0,
+      "discount": number | 0,
       "totalPrice": number,
-      "description": string | null,
+      "description": string | 'No description',
     }
   ],
-  "subtotal": number | null,
-  "tax": number | null,
-  "discount": -number | null,
-  "rounding": +number | -number | null,
-  "totalAmount": number | null
+  "subtotal": number | no,
+  "tax": number | 0,
+  "discount": -number | 0,
+  "rounding": +number | -number | 0,
+  "totalAmount": number | no
 }
 
 OCR TEXT:
