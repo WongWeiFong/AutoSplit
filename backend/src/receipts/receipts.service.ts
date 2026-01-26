@@ -130,10 +130,10 @@ export class ReceiptsService {
   // =========================
   private async processWithGemini(rawText: string): Promise<any> {
     const model = this.genAI.getGenerativeModel({
-      // model: 'gemini-2.0-flash',
+      // model: 'gemini-2.0-flash', // DISCONTINUED
       // model: 'gemini-2.5-flash', // higher accuracy but slower
-      // model: 'gemini-2.5-flash-lite', // lesser accuracy but faster
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash-lite', // lesser accuracy but faster
+      // model: 'gemini-3-flash-preview', // higher accuracy and slightly faster than 2.5-flash
     });
 
     const prompt = `

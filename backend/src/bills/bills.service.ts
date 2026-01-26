@@ -47,6 +47,50 @@ export class BillsService {
     })
   }
   
+  async addParticipants(
+    billId: string,
+    dto: {
+      participants: {
+        displayName: string
+        userId?: string
+        items: string[]
+      }[]
+    }
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      for (const p of dto.participants) {
+        const participant = await tx.participant.create({
+          data: {
+            billId,
+            displayName: p.displayName,
+            userId: p.userId ?? null,
+          },
+        })
+  
+        if (p.items.length) {
+          await tx.splitRule.createMany({
+            data: p.items.map((itemId) => ({
+              billId,
+              participantId: participant.id,
+              billItemId: itemId,
+              type: 'EQUAL',
+            })),
+          })
+        }
+      }
+  
+      return tx.bill.findUnique({
+        where: { id: billId },
+        include: {
+          items: true,
+          participants: {
+            include: { splitRules: true },
+          },
+        },
+      })
+    })
+  }
+  
 
   async createBill(userId: string, dto: CreateBillDto) {
 
