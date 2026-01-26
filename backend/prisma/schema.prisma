@@ -11,8 +11,8 @@ model User {
   name         String?
   email        String?       @unique
   createdAt    DateTime      @default(now()) @map("created_at")
+
   bills        Bill[]        @relation("UserBills")
-  participants Participant[]
 
   @@map("users")
 }
@@ -21,14 +21,21 @@ model Bill {
   id           String        @id @default(uuid()) @map("id")
   title        String        @map("title")
   merchantName String?       @map("merchant_name")
-  totalAmount  Decimal?      @map("total_amount")
-  createdById  String        @map("created_by")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  items        BillItem[]
-  createdBy    User          @relation("UserBills", fields: [createdById], references: [id])
-  participants Participant[]
-  receipt      Receipt?
-  splitRules   SplitRule[]
+
+  subtotal      Decimal?      @default(0)
+  tax           Decimal?      @default(0)
+  totalDiscount Decimal?      @default(0) @map("totla_discount")
+  rounding      Decimal?      @default(0)
+  totalAmount   Decimal?      @default(0) @map("total_amount")
+
+  createdById   String        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  createdBy     User          @relation("UserBills", fields: [createdById], references: [id])
+  items         BillItem[]
+  participants  Participant[]
+  receipt       Receipt?
+  splits        BillSplit[]
 
   @@map("bills")
 }
@@ -37,41 +44,43 @@ model BillItem {
   id          String      @id @default(uuid()) @map("id")
   billId      String      @map("bill_id")
   name        String      @map("name")
-  quantity    Decimal?    @map("quantity")
-  unitPrice   Decimal?    @map("unit_price")
-  totalPrice  Decimal?    @map("total_price")
+  quantity    Decimal     @map("quantity")
+  unitPrice   Decimal     @map("unit_price")
+  discount    Decimal     @map("discount")
+  totalPrice  Decimal     @map("total_price")
   description String?     @map("description")
-  discount    Decimal?    @map("discount")
+
   bill        Bill        @relation(fields: [billId], references: [id])
-  splitRules  SplitRule[]
+  splits      BillSplit[]
 
   @@map("bill_items")
 }
 
 model Participant {
-  id          String      @id @default(uuid()) @map("id")
-  billId      String      @map("bill_id")
-  userId      String?     @map("user_id")
-  displayName String      @map("display_name")
-  bill        Bill        @relation(fields: [billId], references: [id])
-  user        User?       @relation(fields: [userId], references: [id])
-  splitRules  SplitRule[]
+  id           String   @id
+  billId       String
+  userId       String?
+  displayName  String
+
+  bill         Bill     @relation(fields: [billId], references: [id])
+  splits       BillSplit[]
 
   @@map("participants")
 }
 
-model SplitRule {
-  id            String      @id @default(uuid()) @map("id")
-  participantId String      @map("participant_id")
-  billId        String      @map("bill_id")
-  billItemId    String      @map("bill_item_id")
-  type          String      @map("type")
-  amount        Decimal?    @map("amount")
+model BillSplit {
+  id            String   @id @default(uuid())
+  billId        String
+  billItemId    String
+  participantId String
+  amount        Decimal
+
   bill          Bill        @relation(fields: [billId], references: [id])
-  billItem      BillItem    @relation(fields: [billItemId], references: [id])
+  item          BillItem    @relation(fields: [billItemId], references: [id])
   participant   Participant @relation(fields: [participantId], references: [id])
 
-  @@map("split_rules")
+  @@unique([billItemId, participantId])
+  @@map("bill_splits")
 }
 
 model Receipt {
@@ -81,6 +90,7 @@ model Receipt {
   rawOcrText   String?  @map("raw_ocr_text")
   aiParsedJson Json?    @map("ai_parsed_json")
   createdAt    DateTime @default(now()) @map("created_at")
+
   bill         Bill     @relation(fields: [billId], references: [id])
 
   @@map("receipts")

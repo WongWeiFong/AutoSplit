@@ -24,6 +24,28 @@ interface ResponseData {
   parsedData: ParsedData
 }
 
+type BillItem = {
+  id: string
+  name: string
+  quantity: number
+  unitPrice: number
+  discount: number
+  totalPrice: number
+  description?: string
+}
+
+type Participant = {
+  id: string
+  displayName: string
+}
+
+type Split = {
+  participantId: string
+  itemId: string
+  amount: number
+}
+
+
 export default function SubmitReceiptPage() {
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -111,15 +133,19 @@ export default function SubmitReceiptPage() {
         name: item.name,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
         discount: item.discount ?? 0,
+        totalPrice: item.totalPrice,
         description: item.description ?? '',
       })),
-      subtotal: responseData.parsedData.subtotal,
-      tax: responseData.parsedData.tax,
-      totalDiscount: responseData.parsedData.totalDiscount ?? 0,
-      rounding: responseData.parsedData.rounding,
-      totalAmount: responseData.parsedData.totalAmount,
+      bill:{     
+        subtotal: responseData.parsedData.subtotal,
+        tax: responseData.parsedData.tax,
+        totalDiscount: responseData.parsedData.totalDiscount ?? 0,
+        rounding: responseData.parsedData.rounding,
+        totalAmount: responseData.parsedData.totalAmount,
+      },
+      participants: [],
+      splits: [],
     }
   
     const res = await fetch(

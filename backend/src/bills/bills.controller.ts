@@ -23,13 +23,13 @@ export class BillsController {
     return this.billsService.confirmBill(billId, dto);
   }
 
-  @Post(':billId/participants')
-  addParticipants(
-    @Param('billId') billId: string,
-    @Body() body,
-  ) {
-    return this.billsService.addParticipants(billId, body)
-  }
+  // @Post(':billId/participants')
+  // addParticipants(
+  //   @Param('billId') billId: string,
+  //   @Body() body,
+  // ) {
+  //   return this.billsService.addParticipants(billId, body)
+  // }
 
   
   // @UseGuards(SupabaseAuthGuard)

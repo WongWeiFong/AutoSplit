@@ -41,7 +41,12 @@ export class ReceiptsService {
       const bill = await this.prisma.bill.create({
         data: {
           title: 'Receipt Upload',
-          createdById: userId,
+          // createdById: userId,
+          createdBy: {
+            connect: {
+              id: userId,
+            },
+          },
         },
       });
 
@@ -176,7 +181,7 @@ Return JSON in this format ONLY:
   ],
   "subtotal": number | no,
   "tax": number | 0,
-  "discount": number | 0,
+  "totalDiscount": number | 0,
   "rounding": +number | -number | 0,
   "totalAmount": number | no
 }

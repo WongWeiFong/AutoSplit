@@ -1,14 +1,13 @@
-// import { CreateSplitRuleDto } from './create-split-rule.dto';
 
 // export class CreateParticipantDto {
 //   userId?: string;
 //   displayName: string;
-//   splitRules?: CreateSplitRuleDto[];
+//   billSplit?: CreateBillSplitDto[];
 // }
 
 import { IsArray, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CreateSplitRuleDto } from './create-split-rule.dto';
+import { CreateBillSplitDto } from './create-bill-split.dto';
 
 export class CreateParticipantDto {
   @IsOptional()
@@ -20,6 +19,6 @@ export class CreateParticipantDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateSplitRuleDto)
-  splitRules: CreateSplitRuleDto[];
+  @Type(() => CreateBillSplitDto)
+  billSplit: CreateBillSplitDto[];
 }

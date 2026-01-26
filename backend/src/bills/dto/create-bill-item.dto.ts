@@ -1,11 +1,3 @@
-// export class CreateBillItemDto {
-//     name: string;
-//     quantity?: number;
-//     unitPrice?: number;
-//     totalPrice?: number;
-//     description?: string;
-//   }
-  
 import { IsArray, IsNumber, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateParticipantDto } from './create-participant.dto';
@@ -24,7 +16,13 @@ export class CreateBillItemDto {
   unitPrice: number;
 
   @IsNumber()
+  discount: number;
+
+  @IsNumber()
   totalPrice: number;
+
+  @IsString()
+  description?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

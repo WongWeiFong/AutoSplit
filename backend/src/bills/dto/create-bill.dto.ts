@@ -1,14 +1,3 @@
-// import { CreateBillItemDto } from './create-bill-item.dto';
-// import { CreateParticipantDto } from './create-participant.dto';
-
-// export class CreateBillDto {
-//   title: string;
-//   merchantName?: string;
-//   totalAmount?: number;
-//   items: CreateBillItemDto[];
-//   participants?: CreateParticipantDto[];
-// }
-
 import { IsArray, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateBillItemDto } from './create-bill-item.dto';
@@ -22,7 +11,18 @@ export class CreateBillDto {
   @IsString()
   merchantName?: string;
 
-  @IsOptional()
+  @IsNumber()
+  subtotal: number;
+
+  @IsNumber()
+  tax: number;
+
+  @IsNumber()
+  totalDiscount: number;
+  
+  @IsNumber()
+  rounding: number;
+
   @IsNumber()
   totalAmount?: number;
 
