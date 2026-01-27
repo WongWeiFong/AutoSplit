@@ -77,15 +77,15 @@ export class ReceiptsService {
       throw new Error('Failed to upload receipt image');
     }
 
-    // const { data } = this.supabaseService.storage
-    //   .from('receipts')
-    //   .getPublicUrl(fileName);
-    //   const imageUrl = data.publicUrl;
-
-      const { data } = await this.supabaseService.storage
+    const { data } = this.supabaseService.storage
       .from('receipts')
-      .createSignedUrl(fileName, 60 * 60);
-      const imageUrl = data?.signedUrl ?? null; 
+      .getPublicUrl(fileName);
+      const imageUrl = data.publicUrl ?? null;
+
+      // const { data } = await this.supabaseService.storage
+      // .from('receipts')
+      // .createSignedUrl(fileName, 60 * 60);
+      // const imageUrl = data?.signedUrl ?? null; 
 
       // 5️⃣ Save OCR + AI result
       await this.prisma.receipt.update({

@@ -24,47 +24,43 @@ interface ResponseData {
   parsedData: ParsedData
 }
 
-type BillItem = {
+interface User {
   id: string
-  name: string
-  quantity: number
-  unitPrice: number
-  discount: number
-  totalPrice: number
-  description?: string
+  name: string | null
+  email: string | null
 }
 
-type Participant = {
-  id: string
-  displayName: string
-}
-
-type Split = {
+interface ItemSplit {
   participantId: string
-  itemId: string
   amount: number
 }
-
 
 export default function SubmitReceiptPage() {
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [responseData, setResponseData] = useState<ResponseData | null>(null)
+  const [editedData, setEditedData] = useState<ParsedData | null>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
+  const [itemSplits, setItemSplits] = useState<Map<number, ItemSplit[]>>(new Map())
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null
     setFile(selectedFile)
     
-    // Create preview URL
     if (selectedFile) {
       setPreviewUrl(URL.createObjectURL(selectedFile))
     } else {
       setPreviewUrl(null)
     }
     
-    // Clear previous response when new file is selected
+    // Clear previous data when new file is selected
     setResponseData(null)
+    setEditedData(null)
+    setSelectedItemIndex(null)
+    setItemSplits(new Map())
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,6 +95,8 @@ export default function SubmitReceiptPage() {
       if (response.ok) {
         const data = await response.json()
         setResponseData(data)
+        // Deep clone for editing
+        setEditedData(JSON.parse(JSON.stringify(data.parsedData)))
       } else {
         alert('Upload failed')
       }
@@ -110,42 +108,161 @@ export default function SubmitReceiptPage() {
     setLoading(false)
   }
 
-  const handleConfirm = async () => {
-    if (!responseData) return
+  const fetchUsers = async () => {
+    if (users.length > 0) return
+    setLoadingUsers(true)
+    
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session) {
+      alert('Please login first')
+      setLoadingUsers(false)
+      return
+    }
   
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    try {
+      const response = await fetch('http://localhost:3000/users', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+  
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data)
+      } else {
+        alert('Failed to fetch users')
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      alert('Failed to fetch users')
+    }
+  
+    setLoadingUsers(false)
+  }
+
+  const updateItem = (index: number, field: keyof ParsedData['items'][0], value: string | number) => {
+    if (editedData) {
+      const newItems = [...editedData.items]
+      newItems[index] = { ...newItems[index], [field]: value }
+      setEditedData({ ...editedData, items: newItems })
+    }
+  }
+
+  const toggleItemParticipant = (itemIndex: number, userId: string) => {
+    const currentSplits = itemSplits.get(itemIndex) || []
+    const existingIndex = currentSplits.findIndex(s => s.participantId === userId)
+    
+    let newSplits: ItemSplit[]
+    if (existingIndex >= 0) {
+      newSplits = currentSplits.filter(s => s.participantId !== userId)
+    } else {
+      newSplits = [...currentSplits, { participantId: userId, amount: 0 }]
+    }
+    
+    setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
+  }
+
+  const updateSplitAmount = (itemIndex: number, userId: string, amount: number) => {
+    const currentSplits = itemSplits.get(itemIndex) || []
+    const newSplits = currentSplits.map(s => 
+      s.participantId === userId ? { ...s, amount } : s
+    )
+    setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
+  }
+
+  const splitEvenly = (itemIndex: number) => {
+    if (!editedData) return
+    
+    const item = editedData.items[itemIndex]
+    const currentSplits = itemSplits.get(itemIndex) || []
+    
+    if (currentSplits.length === 0) return
+    
+    const amountPerPerson = Number((item.totalPrice / currentSplits.length).toFixed(2))
+    const newSplits = currentSplits.map((s, i) => ({
+      ...s,
+      amount: i === currentSplits.length - 1 
+        ? Number((item.totalPrice - amountPerPerson * (currentSplits.length - 1)).toFixed(2))
+        : amountPerPerson
+    }))
+    
+    setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
+  }
+
+  const getTotalSplitAmount = (itemIndex: number): number => {
+    const splits = itemSplits.get(itemIndex) || []
+    return splits.reduce((sum, s) => sum + s.amount, 0)
+  }
+
+  const handleSelectItem = (index: number) => {
+    setSelectedItemIndex(index)
+    fetchUsers()
+  }
+
+  const handleConfirm = async () => {
+    if (!responseData || !editedData) return
+  
+    const { data: { session } } = await supabase.auth.getSession()
   
     if (!session) {
       alert('Please login first')
       return
     }
   
-    const accessToken = session.access_token
-  
-    // Ensure each item has a stable ID
+    // Collect all unique participants from splits
+    const participantIds = new Set<string>()
+    itemSplits.forEach(splits => {
+      splits.forEach(split => participantIds.add(split.participantId))
+    })
+
+    // Build items with IDs
+    const itemsWithIds = editedData.items.map((item, index) => ({
+      id: uuidv4(),
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      discount: item.discount ?? 0,
+      totalPrice: item.totalPrice,
+      description: item.description ?? '',
+      _index: index, // temporary to map splits
+    }))
+
+    // Build splits array
+    const splits: Array<{ itemId: string; participantId: string; amount: number }> = []
+    itemsWithIds.forEach((item) => {
+      const itemSplitList = itemSplits.get(item._index) || []
+      itemSplitList.forEach(split => {
+        splits.push({
+          itemId: item.id,
+          participantId: split.participantId,
+          amount: split.amount,
+        })
+      })
+    })
+
+    // Build participants array
+    const participants = Array.from(participantIds).map(id => {
+      const user = users.find(u => u.id === id)
+      return {
+        id: id,
+        displayName: user?.name || user?.email || id.substring(0, 8),
+      }
+    })
+
     const payload = {
-      title: 'Uploaded Receipt',
-      merchantName: responseData.parsedData.merchantName,
-      items: responseData.parsedData.items.map(item => ({
-        id: uuidv4(),
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        discount: item.discount ?? 0,
-        totalPrice: item.totalPrice,
-        description: item.description ?? '',
-      })),
-      bill:{     
-        subtotal: responseData.parsedData.subtotal,
-        tax: responseData.parsedData.tax,
-        totalDiscount: responseData.parsedData.totalDiscount ?? 0,
-        rounding: responseData.parsedData.rounding,
-        totalAmount: responseData.parsedData.totalAmount,
+      title: editedData.merchantName || 'Uploaded Receipt',
+      merchantName: editedData.merchantName,
+      items: itemsWithIds.map(({ _index, ...item }) => item), // Remove _index
+      bill: {
+        subtotal: editedData.subtotal,
+        tax: editedData.tax,
+        totalDiscount: editedData.totalDiscount ?? 0,
+        rounding: editedData.rounding,
+        totalAmount: editedData.totalAmount,
       },
-      participants: [],
-      splits: [],
+      participants,
+      splits,
     }
   
     const res = await fetch(
@@ -154,187 +271,393 @@ export default function SubmitReceiptPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(payload),
       }
     )
   
     if (!res.ok) {
+      const error = await res.json()
+      console.error('Error:', error)
       alert('Failed to save bill')
       return
     }
   
     alert('Bill saved successfully!')
   }
-  
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
       <h2>Submit Receipt</h2>
       
-      <form onSubmit={handleSubmit}>
+      {/* File Upload Form */}
+      <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
         <input
           type="file"
           accept="image/*"
           onChange={handleFileChange}
-          style={{ marginBottom: '20px' }}
+          style={{ marginRight: '10px' }}
         />
-        <button disabled={loading} style={{ marginLeft: '10px' }}>
-          {loading ? 'Uploading...' : 'Submit Receipt'}
+        <button disabled={loading || !file}>
+          {loading ? 'Processing...' : 'Upload & Process'}
         </button>
       </form>
 
-      {previewUrl && (
+      {/* Main Content - 3 Column Layout */}
+      {previewUrl && editedData && (
         <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
+          
           {/* Left: Image Preview */}
-          <div style={{ flex: '0 0 400px' }}>
-            <h3>Image Preview</h3>
-            <div
-              style={{
-                width: '400px',
-                height: '600px',
-                border: '2px solid #ccc',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                backgroundColor: '#f5f5f5',
-              }}
-            >
+          <div style={{ flex: '0 0 300px' }}>
+            <h3>Receipt Image</h3>
+            <div style={{
+              width: '300px',
+              height: '450px',
+              border: '2px solid #ccc',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              backgroundColor: '#f5f5f5',
+            }}>
               <img
                 src={previewUrl}
                 alt="Receipt preview"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
+            </div>
+
+            {/* Summary Section */}
+            <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+              <h4 style={{ marginTop: 0 }}>Bill Summary</h4>
+              <div style={{ fontSize: '0.9em' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span>Subtotal:</span>
+                  <span>${editedData.subtotal?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span>Tax:</span>
+                  <span>${editedData.tax?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span>Discount:</span>
+                  <span>-${editedData.totalDiscount?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <span>Rounding:</span>
+                  <span>${editedData.rounding?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #ccc', paddingTop: '5px', marginTop: '5px' }}>
+                  <span>Total:</span>
+                  <span>${editedData.totalAmount?.toFixed(2) || '0.00'}</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right: Parsed Data */}
+          {/* Middle: Items List */}
+          <div style={{ flex: '0 0 300px', maxHeight: '650px', overflowY: 'auto' }}>
+            <h3>Items ({editedData.items.length})</h3>
+            {editedData.items.map((item, index) => {
+              const splits = itemSplits.get(index) || []
+              const totalSplit = getTotalSplitAmount(index)
+              const isFullyAssigned = Math.abs(totalSplit - item.totalPrice) < 0.01
+              
+              return (
+                <div
+                  key={index}
+                  onClick={() => handleSelectItem(index)}
+                  style={{
+                    padding: '12px',
+                    marginBottom: '8px',
+                    borderRadius: '6px',
+                    border: selectedItemIndex === index 
+                      ? '2px solid #2196F3' 
+                      : '1px solid #ddd',
+                    backgroundColor: selectedItemIndex === index 
+                      ? '#e3f2fd' 
+                      : isFullyAssigned ? '#e8f5e9' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                    {item.quantity}x {item.name}
+                  </div>
+                  <div style={{ fontSize: '0.9em', color: '#666' }}>
+                    ${item.totalPrice.toFixed(2)}
+                  </div>
+                  {splits.length > 0 && (
+                    <div style={{ 
+                      fontSize: '0.8em', 
+                      marginTop: '4px',
+                      color: isFullyAssigned ? 'green' : 'orange'
+                    }}>
+                      {splits.length} participant(s) • ${totalSplit.toFixed(2)} assigned
+                      {!isFullyAssigned && ` ($${(item.totalPrice - totalSplit).toFixed(2)} remaining)`}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Right: Item Detail Panel */}
           <div style={{ flex: '1', minWidth: '400px' }}>
-            <h3>Parsed Data</h3>
-            {responseData ? (
+            {selectedItemIndex !== null && editedData.items[selectedItemIndex] ? (
               <div style={{ 
                 padding: '20px', 
                 backgroundColor: '#f9f9f9', 
                 borderRadius: '8px',
                 border: '1px solid #ddd'
               }}>
+                <h3 style={{ marginTop: 0 }}>Item Details</h3>
+                
+                {/* Item Fields */}
                 <div style={{ marginBottom: '20px' }}>
-                  <strong>Bill ID:</strong> {responseData.billId}
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <strong>Merchant:</strong> {responseData.parsedData.merchantName || 'Unknown'}
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <strong>Items:</strong>
-                  <div style={{ marginTop: '10px' }}>
-                    {responseData.parsedData.items.map((item, index) => (
-                      <div 
-                        key={index} 
-                        style={{ 
-                          padding: '12px', 
-                          marginBottom: '10px', 
-                          backgroundColor: 'white',
-                          borderRadius: '6px',
-                          border: '1px solid #e0e0e0'
-                        }}
-                      >
-                        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                          {item.quantity}x {item.name}
-                        </div>
-                        {item.description && item.description !== 'No description' && (
-                          <div style={{ 
-                            fontSize: '0.9em', 
-                            color: '#666', 
-                            marginBottom: '5px',
-                            whiteSpace: 'pre-line'
-                          }}>
-                            {item.description}
-                          </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9em' }}>
-                          <span>Unit: RM{item.unitPrice.toFixed(2)}</span>
-                          {item.discount > 0 && (
-                            <span style={{ color: 'green' }}>Discount: -RM{item.discount.toFixed(2)}</span>
-                          )}
-                          <span style={{ fontWeight: 'bold' }}>Total: RM{item.totalPrice.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Name:</label>
+                    <input
+                      type="text"
+                      value={editedData.items[selectedItemIndex].name}
+                      onChange={(e) => updateItem(selectedItemIndex, 'name', e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Quantity:</label>
+                      <input
+                        type="number"
+                        value={editedData.items[selectedItemIndex].quantity}
+                        onChange={(e) => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Unit Price:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].unitPrice}
+                        onChange={(e) => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Discount:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].discount}
+                        onChange={(e) => updateItem(selectedItemIndex, 'discount', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Total Price:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].totalPrice}
+                        onChange={(e) => updateItem(selectedItemIndex, 'totalPrice', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Description:</label>
+                    <textarea
+                      value={editedData.items[selectedItemIndex].description}
+                      onChange={(e) => updateItem(selectedItemIndex, 'description', e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical', boxSizing: 'border-box' }}
+                    />
                   </div>
                 </div>
 
+                {/* Participant Assignment Section */}
                 <div style={{ 
-                  borderTop: '2px solid #ccc', 
-                  paddingTop: '15px',
-                  fontSize: '1.1em'
+                  borderTop: '2px solid #ddd', 
+                  paddingTop: '20px',
+                  marginTop: '20px'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span>Subtotal:</span>
-                    <span>RM{responseData.parsedData.subtotal.toFixed(2)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h4 style={{ margin: 0 }}>Assign Participants</h4>
+                    <button
+                      type="button"
+                      onClick={() => splitEvenly(selectedItemIndex)}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9em'
+                      }}
+                    >
+                      Split Evenly
+                    </button>
                   </div>
-                  {responseData.parsedData.tax > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span>Tax & Service Charges:</span>
-                      <span>RM{responseData.parsedData.tax.toFixed(2)}</span>
-                    </div>
+
+                  {loadingUsers ? (
+                    <p>Loading users...</p>
+                  ) : users.length === 0 ? (
+                    <p style={{ color: '#999' }}>No users available</p>
+                  ) : (
+                    <>
+                      {/* User Selection Grid */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px' }}>
+                        {users.map(user => {
+                          const splits = itemSplits.get(selectedItemIndex) || []
+                          const isSelected = splits.some(s => s.participantId === user.id)
+                          
+                          return (
+                            <div
+                              key={user.id}
+                              onClick={() => toggleItemParticipant(selectedItemIndex, user.id)}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '20px',
+                                border: isSelected ? '2px solid #4CAF50' : '1px solid #ccc',
+                                backgroundColor: isSelected ? '#e8f5e9' : 'white',
+                                cursor: 'pointer',
+                                fontSize: '0.9em',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              {user.name || user.email || user.id.substring(0, 8)}
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* Amount Inputs for Selected Participants */}
+                      {(() => {
+                        const splits = itemSplits.get(selectedItemIndex) || []
+                        const totalSplit = getTotalSplitAmount(selectedItemIndex)
+                        const itemTotal = editedData.items[selectedItemIndex].totalPrice
+                        const remaining = itemTotal - totalSplit
+                        
+                        return splits.length > 0 ? (
+                          <div style={{ 
+                            backgroundColor: 'white', 
+                            padding: '15px', 
+                            borderRadius: '6px',
+                            border: '1px solid #ddd'
+                          }}>
+                            <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>
+                              Amount per participant:
+                            </div>
+                            
+                            {splits.map(split => {
+                              const user = users.find(u => u.id === split.participantId)
+                              return (
+                                <div 
+                                  key={split.participantId}
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    marginBottom: '10px',
+                                    padding: '8px',
+                                    backgroundColor: '#f5f5f5',
+                                    borderRadius: '4px'
+                                  }}
+                                >
+                                  <span style={{ flex: 1 }}>
+                                    {user?.name || user?.email || split.participantId.substring(0, 8)}
+                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span>$</span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={split.amount}
+                                      onChange={(e) => updateSplitAmount(
+                                        selectedItemIndex, 
+                                        split.participantId, 
+                                        parseFloat(e.target.value) || 0
+                                      )}
+                                      style={{ 
+                                        width: '80px', 
+                                        padding: '6px', 
+                                        borderRadius: '4px', 
+                                        border: '1px solid #ccc',
+                                        textAlign: 'right'
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            
+                            {/* Summary */}
+                            <div style={{ 
+                              borderTop: '1px solid #ddd', 
+                              paddingTop: '10px', 
+                              marginTop: '10px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: '0.9em'
+                            }}>
+                              <span>Item Total: <strong>${itemTotal.toFixed(2)}</strong></span>
+                              <span>Assigned: <strong>${totalSplit.toFixed(2)}</strong></span>
+                              <span style={{ color: Math.abs(remaining) < 0.01 ? 'green' : 'red' }}>
+                                Remaining: <strong>${remaining.toFixed(2)}</strong>
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p style={{ color: '#999', fontStyle: 'italic' }}>
+                            Click on participants above to assign them to this item
+                          </p>
+                        )
+                      })()}
+                    </>
                   )}
-                  {responseData.parsedData.totalDiscount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: 'green' }}>
-                      <span>Discount:</span>
-                      <span>-RM{(responseData.parsedData.totalDiscount ?? 0).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {responseData.parsedData.rounding !== 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span>Rounding:</span>
-                      <span>RM{responseData.parsedData.rounding.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    fontWeight: 'bold',
-                    fontSize: '1.2em',
-                    marginTop: '10px',
-                    paddingTop: '10px',
-                    borderTop: '2px solid #333'
-                  }}>
-                    <span>Total Amount:</span>
-                    <span>RM{responseData.parsedData.totalAmount.toFixed(2)}</span>
-                  </div>
                 </div>
-                <button
-                  onClick={handleConfirm}
-                  disabled={!responseData}
-                  style={{
-                    marginTop: '20px',
-                    padding: '10px 20px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  Confirm & Save Bill
-                </button>
               </div>
             ) : (
               <div style={{ 
-                padding: '20px', 
+                padding: '40px', 
                 backgroundColor: '#f9f9f9', 
                 borderRadius: '8px',
                 border: '1px solid #ddd',
-                color: '#999',
-                textAlign: 'center'
+                textAlign: 'center',
+                color: '#999'
               }}>
-                {loading ? 'Processing receipt...' : 'Submit the receipt to see parsed data'}
+                <h3>Select an item</h3>
+                <p>Click on an item from the list to view details and assign participants</p>
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Confirm Button */}
+      {editedData && responseData && (
+        <div style={{ marginTop: '30px', textAlign: 'center' }}>
+          <button
+            onClick={handleConfirm}
+            style={{
+              padding: '15px 40px',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '1.1em',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}
+          >
+            Confirm & Save Bill
+          </button>
         </div>
       )}
     </div>
