@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 interface ParsedData {
   merchantName: string | null
   items: Array<{
+    id: string
     name: string
     quantity: number
     unitPrice: number
@@ -31,7 +32,7 @@ interface User {
 }
 
 interface ItemSplit {
-  participantId: string
+  userId: string
   amount: number
 }
 
@@ -95,8 +96,16 @@ export default function SubmitReceiptPage() {
       if (response.ok) {
         const data = await response.json()
         setResponseData(data)
+        const itemsWithIds = data.parsedData.items.map((item: any) => ({
+          ...item,
+          id: uuidv4()
+        }))
         // Deep clone for editing
-        setEditedData(JSON.parse(JSON.stringify(data.parsedData)))
+        // setEditedData(JSON.parse(JSON.stringify(data.parsedData)))
+        setEditedData({
+          ...data.parsedData,
+          items: itemsWithIds
+        })
       } else {
         alert('Upload failed')
       }
@@ -151,13 +160,13 @@ export default function SubmitReceiptPage() {
 
   const toggleItemParticipant = (itemIndex: number, userId: string) => {
     const currentSplits = itemSplits.get(itemIndex) || []
-    const existingIndex = currentSplits.findIndex(s => s.participantId === userId)
+    const existingIndex = currentSplits.findIndex(s => s.userId === userId)
     
     let newSplits: ItemSplit[]
     if (existingIndex >= 0) {
-      newSplits = currentSplits.filter(s => s.participantId !== userId)
+      newSplits = currentSplits.filter(s => s.userId !== userId)
     } else {
-      newSplits = [...currentSplits, { participantId: userId, amount: 0 }]
+      newSplits = [...currentSplits, { userId: userId, amount: 0 }]
     }
     
     setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
@@ -166,7 +175,7 @@ export default function SubmitReceiptPage() {
   const updateSplitAmount = (itemIndex: number, userId: string, amount: number) => {
     const currentSplits = itemSplits.get(itemIndex) || []
     const newSplits = currentSplits.map(s => 
-      s.participantId === userId ? { ...s, amount } : s
+      s.userId === userId ? { ...s, amount } : s
     )
     setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
   }
@@ -211,49 +220,48 @@ export default function SubmitReceiptPage() {
     }
   
     // Collect all unique participants from splits
-    const participantIds = new Set<string>()
+    const userIds = new Set<string>()
     itemSplits.forEach(splits => {
-      splits.forEach(split => participantIds.add(split.participantId))
+      splits.forEach(split => userIds.add(split.userId))
     })
 
     // Build items with IDs
-    const itemsWithIds = editedData.items.map((item, index) => ({
-      id: uuidv4(),
+    const items = editedData.items.map(item => ({
+      id: item.id,
       name: item.name,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       discount: item.discount ?? 0,
       totalPrice: item.totalPrice,
       description: item.description ?? '',
-      _index: index, // temporary to map splits
     }))
 
+    // Build participants array
+    const participants = Array.from(userIds).map(userId => {
+      const user = users.find(u => u.id === userId)
+      return {
+        userId: user?.id,
+        displayName: user?.name || user?.email || userId.slice(0, 8),
+      }
+    })
+
     // Build splits array
-    const splits: Array<{ itemId: string; participantId: string; amount: number }> = []
-    itemsWithIds.forEach((item) => {
-      const itemSplitList = itemSplits.get(item._index) || []
+    const splits: {itemId: string; itemName: string; userId: string; amount: number }[] = []
+    editedData.items.forEach((item, itemIndex) => {
+      const itemSplitList = itemSplits.get(itemIndex) || []
       itemSplitList.forEach(split => {
         splits.push({
           itemId: item.id,
-          participantId: split.participantId,
+          itemName: item.name,
+          userId: split.userId,
           amount: split.amount,
         })
       })
     })
 
-    // Build participants array
-    const participants = Array.from(participantIds).map(id => {
-      const user = users.find(u => u.id === id)
-      return {
-        id: id,
-        displayName: user?.name || user?.email || id.substring(0, 8),
-      }
-    })
-
     const payload = {
       title: editedData.merchantName || 'Uploaded Receipt',
       merchantName: editedData.merchantName,
-      items: itemsWithIds.map(({ _index, ...item }) => item), // Remove _index
       bill: {
         subtotal: editedData.subtotal,
         tax: editedData.tax,
@@ -261,6 +269,7 @@ export default function SubmitReceiptPage() {
         rounding: editedData.rounding,
         totalAmount: editedData.totalAmount,
       },
+      items,
       participants,
       splits,
     }
@@ -515,7 +524,7 @@ export default function SubmitReceiptPage() {
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px' }}>
                         {users.map(user => {
                           const splits = itemSplits.get(selectedItemIndex) || []
-                          const isSelected = splits.some(s => s.participantId === user.id)
+                          const isSelected = splits.some(s => s.userId === user.id)
                           
                           return (
                             <div
@@ -556,10 +565,10 @@ export default function SubmitReceiptPage() {
                             </div>
                             
                             {splits.map(split => {
-                              const user = users.find(u => u.id === split.participantId)
+                              const user = users.find(u => u.id === split.userId)
                               return (
                                 <div 
-                                  key={split.participantId}
+                                  key={split.userId}
                                   style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
@@ -571,7 +580,7 @@ export default function SubmitReceiptPage() {
                                   }}
                                 >
                                   <span style={{ flex: 1 }}>
-                                    {user?.name || user?.email || split.participantId.substring(0, 8)}
+                                    {user?.name || user?.email || split.userId.substring(0, 8)}
                                   </span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     <span>$</span>
@@ -581,7 +590,7 @@ export default function SubmitReceiptPage() {
                                       value={split.amount}
                                       onChange={(e) => updateSplitAmount(
                                         selectedItemIndex, 
-                                        split.participantId, 
+                                        split.userId, 
                                         parseFloat(e.target.value) || 0
                                       )}
                                       style={{ 

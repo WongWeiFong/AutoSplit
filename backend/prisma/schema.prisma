@@ -7,79 +7,82 @@ datasource db {
 }
 
 model User {
-  id           String        @id
-  name         String?
-  email        String?       @unique
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id        String   @id
+  name      String?
+  email     String?  @unique
+  createdAt DateTime @default(now()) @map("created_at")
 
-  bills        Bill[]        @relation("UserBills")
+  bills  Bill[]      @relation("UserBills")
+  splits BillSplit[]
 
   @@map("users")
 }
 
 model Bill {
-  id           String        @id @default(uuid()) @map("id")
-  title        String        @map("title")
-  merchantName String?       @map("merchant_name")
+  id           String  @id @default(uuid()) @map("id")
+  title        String  @map("title")
+  merchantName String? @map("merchant_name")
 
-  subtotal      Decimal?      @default(0)
-  tax           Decimal?      @default(0)
-  totalDiscount Decimal?      @default(0) @map("totla_discount")
-  rounding      Decimal?      @default(0)
-  totalAmount   Decimal?      @default(0) @map("total_amount")
+  subtotal      Decimal? @default(0)
+  tax           Decimal? @default(0)
+  totalDiscount Decimal? @default(0) @map("total_discount")
+  rounding      Decimal? @default(0)
+  totalAmount   Decimal? @default(0) @map("total_amount")
 
-  createdById   String        @map("created_by")
-  createdAt     DateTime      @default(now()) @map("created_at")
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  createdBy     User          @relation("UserBills", fields: [createdById], references: [id])
-  items         BillItem[]
-  participants  Participant[]
-  receipt       Receipt?
-  splits        BillSplit[]
+  createdBy    User          @relation("UserBills", fields: [createdById], references: [id])
+  items        BillItem[]
+  participants Participant[]
+  receipt      Receipt?
+  splits       BillSplit[]
 
   @@map("bills")
 }
 
 model BillItem {
-  id          String      @id @default(uuid()) @map("id")
-  billId      String      @map("bill_id")
-  name        String      @map("name")
-  quantity    Decimal     @map("quantity")
-  unitPrice   Decimal     @map("unit_price")
-  discount    Decimal     @map("discount")
-  totalPrice  Decimal     @map("total_price")
-  description String?     @map("description")
+  id          String  @id
+  billId      String  @map("bill_id")
+  name        String  @map("name")
+  quantity    Decimal @map("quantity")
+  unitPrice   Decimal @map("unit_price")
+  discount    Decimal @map("discount")
+  totalPrice  Decimal @map("total_price")
+  description String? @map("description")
 
-  bill        Bill        @relation(fields: [billId], references: [id])
-  splits      BillSplit[]
+  bill   Bill        @relation(fields: [billId], references: [id])
+  splits BillSplit[]
 
   @@map("bill_items")
 }
 
 model Participant {
-  id           String   @id
-  billId       String
-  userId       String?
-  displayName  String
+  id          String @id @default(uuid())
+  billId      String @map("bill_id")
+  userId      String @map("user_id")
+  displayName String @map("display_name")
 
-  bill         Bill     @relation(fields: [billId], references: [id])
-  splits       BillSplit[]
+  bill Bill @relation(fields: [billId], references: [id])
 
+  @@unique([billId, userId])
   @@map("participants")
 }
 
 model BillSplit {
-  id            String   @id @default(uuid())
-  billId        String
-  billItemId    String
-  participantId String
-  amount        Decimal
+  id         String  @id @default(uuid())
+  billId     String  @map("bill_id")
+  billItemId String  @map("bill_item_id")
+  userId     String  @map("user_id")
+  amount     Decimal
 
-  bill          Bill        @relation(fields: [billId], references: [id])
-  item          BillItem    @relation(fields: [billItemId], references: [id])
-  participant   Participant @relation(fields: [participantId], references: [id])
+  bill Bill     @relation(fields: [billId], references: [id])
+  item BillItem @relation(fields: [billItemId], references: [id])
+  user User     @relation(fields: [userId], references: [id])
 
-  @@unique([billItemId, participantId])
+  @@unique([billId, billItemId, userId])
+  @@index([billId])
+  @@index([userId])
   @@map("bill_splits")
 }
 
@@ -91,7 +94,7 @@ model Receipt {
   aiParsedJson Json?    @map("ai_parsed_json")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  bill         Bill     @relation(fields: [billId], references: [id])
+  bill Bill @relation(fields: [billId], references: [id])
 
   @@map("receipts")
 }

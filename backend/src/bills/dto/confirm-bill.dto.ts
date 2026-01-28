@@ -22,11 +22,15 @@ export class ConfirmBillDto {
 
   participants: {
     id: string
+    billId: string
+    userId: string
     displayName: string
   }[]
 
   splits: {
-    participantId: string
+    id: string
+    billId: string
+    userId: string
     itemId: string
     amount: number
   }[]

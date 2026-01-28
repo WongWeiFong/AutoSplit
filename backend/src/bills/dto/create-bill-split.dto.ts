@@ -1,8 +1,9 @@
-import { IsNumber, IsOptional, IsUUID } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateBillSplitDto {
-  @IsUUID()
-  participantId: string;
+
+  @IsString()
+  userId: string;
 
   @IsUUID()
   billItemId: string;

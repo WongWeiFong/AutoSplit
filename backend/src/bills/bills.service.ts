@@ -1,70 +1,90 @@
 import { Injectable, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBillDto } from './dto/create-bill.dto';
-import { CreateParticipantDto } from './dto/create-participant.dto';
-import { CreateBillSplitDto } from './dto/create-bill-split.dto';
+// import { CreateParticipantDto } from './dto/create-participant.dto';
+// import { CreateBillSplitDto } from './dto/create-bill-split.dto';
 import { ConfirmBillDto } from './dto/confirm-bill.dto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class BillsService {
   constructor(private readonly prisma: PrismaService) {}
+
   async confirmBill(billId: string, dto: ConfirmBillDto) {
     return this.prisma.$transaction(async (tx) => {
-  
+
       // 1️⃣ Update bill summary
       await tx.bill.update({
         where: { id: billId },
         data: {
           title: dto.title,
           merchantName: dto.merchantName,
+          subtotal: dto.bill.subtotal,
+          tax: dto.bill.tax,
+          totalDiscount: dto.bill.totalDiscount,
+          rounding: dto.bill.rounding,
           totalAmount: dto.bill.totalAmount,
         },
       })
-  
-      // 2️⃣ Clear old data (re-confirm safe)
+
+      // 2️⃣ Clear old data
       await tx.billSplit.deleteMany({ where: { billId } })
       await tx.participant.deleteMany({ where: { billId } })
       await tx.billItem.deleteMany({ where: { billId } })
-  
+
       // 3️⃣ Insert items
       await tx.billItem.createMany({
         data: dto.items.map(item => ({
-          ...item,
+          id: item.id,
           billId,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount,
+          totalPrice: item.totalPrice,
+          description: item.description,
         })),
       })
-  
-      // 4️⃣ Insert participants
+
+      // 4️⃣ Fetch inserted items & map by name (or index)
+      const billItems = await tx.billItem.findMany({ where: { billId } })
+      const itemMap = new Map(
+        billItems.map(i => [i.id, i.id])
+      )
+
+      // 5️⃣ Insert participants (snapshot)
       await tx.participant.createMany({
         data: dto.participants.map(p => ({
-          id: p.id,
           billId,
+          userId: p.userId,
           displayName: p.displayName,
         })),
       })
-  
-      // 5️⃣ Validate splits
+
+      // 6️⃣ Validate splits
       for (const item of dto.items) {
         const sum = dto.splits
           .filter(s => s.itemId === item.id)
           .reduce((a, b) => a + b.amount, 0)
-  
-        if (sum !== item.totalPrice) {
-          throw new Error(`Split mismatch for item ${item.id}`)
+
+          if (Math.abs(sum - item.totalPrice) !== 0) {
+          throw new Error(`Split mismatch for item ${item.name}` + sum + "sum more than totalPrice" + item.totalPrice)
+        // } else if (Math.abs(sum - item.totalPrice) <= 0.01) {
+        //   throw new Error(`Split mismatch for item ${item.name}` + sum + "sum lesser than totalPrice" + item.totalPrice)
         }
       }
-  
-      // 6️⃣ Insert splits
+
+      // 7️⃣ Insert splits (FINAL, CORRECT)
       await tx.billSplit.createMany({
         data: dto.splits.map(s => ({
           billId,
-          billItemId: s.itemId,
-          participantId: s.participantId,
+          billItemId: itemMap.get(s.itemId)!,
+          userId: s.userId,
           amount: s.amount,
         })),
       })
-  
-      return { billId, status: 'CONFIRMED' }
+
+      return { billId }
     })
   }
 
@@ -74,21 +94,20 @@ export class BillsService {
       update: {},
       create: { id: userId },
     })
-  
+
     return this.prisma.bill.create({
       data: {
         title: dto.title,
         merchantName: dto.merchantName,
         totalAmount: dto.totalAmount,
-        // createdById: userId,
         createdBy: {
-          connect: {
-            id: userId,
-          },
+          connect: { id: userId },
         },
       },
     })
   }
+
+
   
   
   // async addParticipants(
