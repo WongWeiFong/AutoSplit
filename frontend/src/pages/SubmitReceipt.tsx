@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { v4 as uuidv4 } from 'uuid'
+import { useParams, useNavigate } from 'react-router-dom'
 
 interface ParsedData {
   merchantName: string | null
   items: Array<{
-    id: string
+    tempItemId: string
     name: string
     quantity: number
     unitPrice: number
@@ -46,7 +47,9 @@ export default function SubmitReceiptPage() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [itemSplits, setItemSplits] = useState<Map<number, ItemSplit[]>>(new Map())
-
+  const { tripId } = useParams<{ tripId: string }>()
+  const navigate = useNavigate()
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null
     setFile(selectedFile)
@@ -66,7 +69,7 @@ export default function SubmitReceiptPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file) return
+    if (!file || !tripId) return
 
     setLoading(true)
 
@@ -83,6 +86,7 @@ export default function SubmitReceiptPage() {
     const accessToken = session.access_token
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('tripId', tripId)
 
     try {
       const response = await fetch('http://localhost:3000/receipts/upload', {
@@ -98,7 +102,7 @@ export default function SubmitReceiptPage() {
         setResponseData(data)
         const itemsWithIds = data.parsedData.items.map((item: any) => ({
           ...item,
-          id: uuidv4()
+          tempItemId: uuidv4()
         }))
         // Deep clone for editing
         // setEditedData(JSON.parse(JSON.stringify(data.parsedData)))
@@ -130,7 +134,9 @@ export default function SubmitReceiptPage() {
     }
   
     try {
-      const response = await fetch('http://localhost:3000/users', {
+      const response = await fetch(`http://localhost:3000/trips/${tripId}/members`, {
+      // const response = await fetch('http://localhost:3000/users', {
+        method: 'GET',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -138,13 +144,14 @@ export default function SubmitReceiptPage() {
   
       if (response.ok) {
         const data = await response.json()
-        setUsers(data)
+        setUsers(data.map((m: any) => m.user));
+        // setUsers(data)
       } else {
-        alert('Failed to fetch users')
+        alert('Failed to fetch trip members')
       }
     } catch (error) {
-      console.error('Error fetching users:', error)
-      alert('Failed to fetch users')
+      console.error('Error fetching trip members:', error)
+      alert('Failed to fetch trip members')
     }
   
     setLoadingUsers(false)
@@ -227,7 +234,7 @@ export default function SubmitReceiptPage() {
 
     // Build items with IDs
     const items = editedData.items.map(item => ({
-      id: item.id,
+      tempItemId: item.tempItemId,
       name: item.name,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -246,12 +253,12 @@ export default function SubmitReceiptPage() {
     })
 
     // Build splits array
-    const splits: {itemId: string; itemName: string; userId: string; amount: number }[] = []
+    const splits: {tempItemId: string; itemName: string; userId: string; amount: number }[] = []
     editedData.items.forEach((item, itemIndex) => {
       const itemSplitList = itemSplits.get(itemIndex) || []
       itemSplitList.forEach(split => {
         splits.push({
-          itemId: item.id,
+          tempItemId: item.tempItemId,
           itemName: item.name,
           userId: split.userId,
           amount: split.amount,
@@ -286,14 +293,16 @@ export default function SubmitReceiptPage() {
       }
     )
   
-    if (!res.ok) {
+    if (res.ok) {
+      alert('Bill saved successfully!');
+      navigate(`/trips/${tripId}`);
+
+    } else {
       const error = await res.json()
       console.error('Error:', error)
       alert('Failed to save bill')
-      return
     }
-  
-    alert('Bill saved successfully!')
+    
   }
 
   return (

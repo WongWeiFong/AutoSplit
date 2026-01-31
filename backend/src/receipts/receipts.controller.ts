@@ -22,16 +22,17 @@ export class ReceiptsController {
   async uploadReceipt(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
+    @Body('tripId') tripId: string,
   ) {
     if (!file) {
       throw new BadRequestException('Receipt image file is required');
     }
 
     const userId = req.user.id;
-
     return this.receiptsService.uploadAndProcessReceipt(
       file,
       userId,
+      tripId,
     );
   }
 }

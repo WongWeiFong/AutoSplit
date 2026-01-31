@@ -1,4 +1,5 @@
 export class ConfirmBillDto {
+  tripId: string
   title: string
   merchantName?: string
 
@@ -11,7 +12,7 @@ export class ConfirmBillDto {
   }
 
   items: {
-    id: string
+    tempItemId: string
     name: string
     quantity: number
     unitPrice: number
@@ -28,10 +29,9 @@ export class ConfirmBillDto {
   }[]
 
   splits: {
-    id: string
+    tempItemId: string
     billId: string
     userId: string
-    itemId: string
     amount: number
   }[]
 }

@@ -12,14 +12,17 @@ model User {
   email     String?  @unique
   createdAt DateTime @default(now()) @map("created_at")
 
-  bills  Bill[]      @relation("UserBills")
-  splits BillSplit[]
+  createdTrips    Trip[]       @relation("UserCreatedTrips")
+  bills           Bill[]       @relation("UserBills")
+  splits          BillSplit[]
+  tripMemberships TripMember[]
 
   @@map("users")
 }
 
 model Bill {
   id           String  @id @default(uuid()) @map("id")
+  tripId       String  @map("trip_id")
   title        String  @map("title")
   merchantName String? @map("merchant_name")
 
@@ -33,6 +36,7 @@ model Bill {
   createdAt   DateTime @default(now()) @map("created_at")
 
   createdBy    User          @relation("UserBills", fields: [createdById], references: [id])
+  trip         Trip          @relation(fields: [tripId], references: [id])
   items        BillItem[]
   participants Participant[]
   receipt      Receipt?
@@ -42,14 +46,15 @@ model Bill {
 }
 
 model BillItem {
-  id          String  @id
-  billId      String  @map("bill_id")
-  name        String  @map("name")
-  quantity    Decimal @map("quantity")
-  unitPrice   Decimal @map("unit_price")
-  discount    Decimal @map("discount")
-  totalPrice  Decimal @map("total_price")
-  description String? @map("description")
+  id           String  @id @default(uuid())
+  billId       String  @map("bill_id")
+  clientItemId String  @map("client_item_id")
+  name         String  @map("name")
+  quantity     Decimal @map("quantity")
+  unitPrice    Decimal @map("unit_price")
+  discount     Decimal @map("discount")
+  totalPrice   Decimal @map("total_price")
+  description  String? @map("description")
 
   bill   Bill        @relation(fields: [billId], references: [id])
   splits BillSplit[]
@@ -84,6 +89,28 @@ model BillSplit {
   @@index([billId])
   @@index([userId])
   @@map("bill_splits")
+}
+
+model Trip {
+  id        String   @id @default(uuid())
+  tripName  String   @map("trip_name")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  creator User         @relation("UserCreatedTrips", fields: [createdBy], references: [id])
+  members TripMember[]
+  bills   Bill[]
+}
+
+model TripMember {
+  id     String @id @default(uuid())
+  tripId String @map("trip_id")
+  userId String @map("user_id")
+
+  trip Trip @relation(fields: [tripId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([tripId, userId])
 }
 
 model Receipt {

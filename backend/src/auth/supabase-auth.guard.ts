@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, createParamDecorator } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 
 @Injectable()
@@ -23,3 +23,12 @@ export class SupabaseAuthGuard implements CanActivate {
     return true;
   }
 }
+
+export const GetUser = createParamDecorator(
+  (data: string | undefined, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest();
+    const user = request.user;
+
+    return data ? user?.[data] : user;
+  },
+);

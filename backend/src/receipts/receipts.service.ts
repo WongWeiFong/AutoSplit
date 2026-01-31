@@ -28,7 +28,9 @@ export class ReceiptsService {
   async uploadAndProcessReceipt(
     file: Express.Multer.File,
     userId: string,
+    tripId: string,
   ) {
+    console.log('received tripid:', tripId)
     try {
       // 0️⃣ Ensure user exists (FK safe)
       await this.prisma.user.upsert({
@@ -41,7 +43,11 @@ export class ReceiptsService {
       const bill = await this.prisma.bill.create({
         data: {
           title: 'Receipt Upload',
-          // createdById: userId,
+          trip: {
+            connect: {
+              id: tripId,
+            },
+          },
           createdBy: {
             connect: {
               id: userId,
@@ -130,15 +136,16 @@ export class ReceiptsService {
     }
   }
 
-  // =========================
   // GEMINI AI PROCESSING
-  // =========================
   private async processWithGemini(rawText: string): Promise<any> {
     const model = this.genAI.getGenerativeModel({
       // model: 'gemini-2.0-flash', // DISCONTINUED
-      // model: 'gemini-2.5-flash', // higher accuracy but slower
-      model: 'gemini-2.5-flash-lite', // lesser accuracy but faster
-      // model: 'gemini-3-flash-preview', // higher accuracy and slightly faster than 2.5-flash
+      // model: 'gemini-2.5-flash-lite', // higher accuracy but slower
+      // model: 'gemini-2.5-flash', // lesser accuracy but faster
+      // model: 'gemini-2.5-pro'
+
+      model: 'gemini-3-flash-preview', // higher accuracy and slightly faster than 2.5-flash
+      // model: 'gemini-3-pro-preview',
     });
 
     const prompt = `

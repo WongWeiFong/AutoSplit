@@ -8,10 +8,10 @@ import { ConfigModule } from '@nestjs/config';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { UsersModule } from './users/users.module';
-
+import { TripsModule } from './trips/trips.module';
 
 @Module({
-  imports: [PrismaModule, BillsModule, ConfigModule.forRoot({
+  imports: [PrismaModule, BillsModule, TripsModule, ConfigModule.forRoot({
     isGlobal: true,
   }), ReceiptsModule, SupabaseModule, UsersModule],
   controllers: [TestController],
