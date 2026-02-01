@@ -13,6 +13,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
 
   createdTrips    Trip[]       @relation("UserCreatedTrips")
+  paidBills       Bill[]       @relation("UserPaidBills")
   bills           Bill[]       @relation("UserBills")
   splits          BillSplit[]
   tripMemberships TripMember[]
@@ -34,8 +35,10 @@ model Bill {
 
   createdById String   @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
+  paidById    String   @map("paid_by")
 
   createdBy    User          @relation("UserBills", fields: [createdById], references: [id])
+  paidBy       User          @relation("UserPaidBills", fields: [paidById], references: [id])
   trip         Trip          @relation(fields: [tripId], references: [id])
   items        BillItem[]
   participants Participant[]
@@ -100,6 +103,8 @@ model Trip {
   creator User         @relation("UserCreatedTrips", fields: [createdBy], references: [id])
   members TripMember[]
   bills   Bill[]
+
+  @@map("trip")
 }
 
 model TripMember {
@@ -111,6 +116,7 @@ model TripMember {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([tripId, userId])
+  @@map("trip_member")
 }
 
 model Receipt {

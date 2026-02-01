@@ -48,6 +48,26 @@ export class TripsService {
     })
   }
 
+  async getTripBalances(tripId: string) {
+    const bills = await this.prisma.bill.findMany({
+      where: { tripId },
+      include: {
+        splits: true, // What each person owes for this bill
+      }
+    });
+    const balances: Record<string, number> = {}; // userId -> net amount
+    bills.forEach(bill => {
+      // The payer is "out of pocket" by the total amount
+      balances[bill.paidById] = (balances[bill.paidById] || 0) + Number(bill.totalAmount);
+      // Each person in the split "owes" their share
+      bill.splits.forEach(split => {
+        balances[split.userId] = (balances[split.userId] || 0) - Number(split.amount);
+      });
+    });
+  
+    return balances;
+  }
+
   async getTripMembers(tripId: string) {
     return this.prisma.tripMember.findMany({
       where: { tripId },

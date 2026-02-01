@@ -10,20 +10,46 @@ interface Bill {
   createdAt: string;
 }
 
+interface TripMember {
+  userId: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  }
+}
+
 export default function TripBillsPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [balances, setBalances] = useState<Record<string, number>>({});
+  const [tripMembers, setTripMembers] = useState<TripMember[]>([]);
 
-  const fetchBills = async () => {
+  const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`http://localhost:3000/trips/${tripId}/bills`, {
-      headers: { Authorization: `Bearer ${session?.access_token}` }
-    });
-    if (res.ok) setBills(await res.json());
+    if (!session) return;
+    const token = session.access_token;
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const billsRes = await fetch(`http://localhost:3000/trips/${tripId}/bills`, { headers });
+    if (billsRes.ok) setBills(await billsRes.json());
+    const balancesRes = await fetch(`http://localhost:3000/trips/${tripId}/balances`, { headers });
+    if (balancesRes.ok) setBalances(await balancesRes.json());
+    const membersRes = await fetch(`http://localhost:3000/trips/${tripId}/members`, { headers });
+    if (membersRes.ok) setTripMembers(await membersRes.json());
     setLoading(false);
-  };
+
+  }
+  // const fetchBills = async () => {
+  //   const { data: { session } } = await supabase.auth.getSession();
+  //   const res = await fetch(`http://localhost:3000/trips/${tripId}/bills`, {
+  //     headers: { Authorization: `Bearer ${session?.access_token}` }
+  //   });
+  //   if (res.ok) setBills(await res.json());
+  //   setLoading(false);
+  // };
 
   const handleDeleteBill = async (billId: string) => {
     if (!confirm('Delete this bill?')) return;
@@ -32,10 +58,10 @@ export default function TripBillsPage() {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session?.access_token}` }
     });
-    fetchBills();
+    fetchData();
   };
 
-  useEffect(() => { fetchBills(); }, [tripId]);
+  useEffect(() => { fetchData(); }, [tripId]);
 
   return (
     <div style={{ padding: '20px' }}>
@@ -47,6 +73,19 @@ export default function TripBillsPage() {
         >
           + Upload New Receipt
         </button>
+      </div>
+
+      <div className="balance-summary" style={{ padding: '15px', backgroundColor: '#f0f4f8', borderRadius: '8px', marginBottom: '20px' }}>
+        <h3>Trip Balances</h3>
+        {Object.entries(balances).map(([userId, amount]) => {
+          const member = tripMembers.find(m => m.userId === userId);
+          const name = member?.user?.name || member?.user?.email || "Unknown User";
+          return (
+            <div key={userId} style={{ color: amount >= 0 ? 'green' : 'red' }}>
+              {name}: {amount >= 0 ? `is owed $${amount.toFixed(2)}` : `owes $${Math.abs(amount).toFixed(2)}`}
+            </div>
+          );
+        })}
       </div>
 
       {loading ? <p>Loading bills...</p> : (

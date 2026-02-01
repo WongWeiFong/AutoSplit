@@ -17,6 +17,7 @@ export class BillsService {
       await tx.bill.update({
         where: { id: billId },
         data: {
+          paidById: dto.paidById,
           title: dto.title,
           merchantName: dto.merchantName,
           tripId: dto.tripId,

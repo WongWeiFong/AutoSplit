@@ -2,6 +2,7 @@ export class ConfirmBillDto {
   tripId: string
   title: string
   merchantName?: string
+  paidById: string
 
   bill: {
     subtotal: number

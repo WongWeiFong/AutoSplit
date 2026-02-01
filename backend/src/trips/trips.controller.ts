@@ -56,6 +56,14 @@ export class TripsController {
   addTripMember(@Param('tripId') tripId: string, @Body() dto: AddTripMemberDto) {
     return this.tripsService.addMember(tripId, dto.userId)
   }
+  
+  @Get(':tripId/balances')
+  async getTripBalances(
+    @GetUser('id') userId: string,
+    @Param('tripId') tripId: string
+  ) {
+    return this.tripsService.getTripBalances(tripId)
+  }
 
   @Get()
   findMyTrips(@Req() req) {

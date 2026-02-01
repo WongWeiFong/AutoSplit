@@ -43,6 +43,11 @@ export class ReceiptsService {
       const bill = await this.prisma.bill.create({
         data: {
           title: 'Receipt Upload',
+          paidBy:{
+            connect: {
+              id: userId,
+            },
+          },
           trip: {
             connect: {
               id: tripId,

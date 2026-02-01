@@ -47,6 +47,7 @@ export default function SubmitReceiptPage() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [itemSplits, setItemSplits] = useState<Map<number, ItemSplit[]>>(new Map())
+  const [paidById, setPaidById] = useState<string | null>(null)
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
   
@@ -267,6 +268,7 @@ export default function SubmitReceiptPage() {
     })
 
     const payload = {
+      paidById: paidById || session.user.id,
       title: editedData.merchantName || 'Uploaded Receipt',
       merchantName: editedData.merchantName,
       bill: {
@@ -374,6 +376,15 @@ export default function SubmitReceiptPage() {
 
           {/* Middle: Items List */}
           <div style={{ flex: '0 0 300px', maxHeight: '650px', overflowY: 'auto' }}>
+            <div style={{ margin: '0px 10px' }}>
+              <label>Who paid for this bill?</label>
+              <select value={paidById || ''} onChange={(e) => setPaidById(e.target.value)}>
+                <option value="">Select Payer</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>{user.name || user.email}</option>
+                ))}
+              </select>
+            </div>
             <h3>Items ({editedData.items.length})</h3>
             {editedData.items.map((item, index) => {
               const splits = itemSplits.get(index) || []
