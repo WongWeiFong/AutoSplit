@@ -4,6 +4,7 @@ import SubmitReceipt from "./pages/SubmitReceipt";
 import Login from "./pages/Login";
 import TripsPage from "./pages/TripsPage";
 import TripBillsPage from "./pages/TripBillsPage";
+import BillEditPage from "./pages/BillEditPage";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/upload/:tripId" element={<SubmitReceipt />} />
         <Route path="/trips" element={<TripsPage />} />
         <Route path="/trips/:tripId" element={<TripBillsPage />} />
+        <Route path="/bills/:billId/edit" element={<BillEditPage />} />
 
       </Routes>
     </BrowserRouter>

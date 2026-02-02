@@ -1,4 +1,4 @@
-import { Body, Controller, Put, Post, Req, UseGuards, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Put, Post, Req, UseGuards, Param, Delete, Get, NotFoundException } from '@nestjs/common';
 import { SupabaseAuthGuard, GetUser } from '../auth/supabase-auth.guard';
 import { BillsService } from './bills.service';
 import { ConfirmBillDto } from './dto/confirm-bill.dto';
@@ -8,12 +8,6 @@ import { ConfirmBillDto } from './dto/confirm-bill.dto';
 export class BillsController {
   constructor(private readonly billsService: BillsService) {}
 
-  // @Post()
-  // create(@Req() req, @Body() body: any) {
-  //   const userId = req.user.id;
-  //   return this.billsService.createBill(userId, body);
-  // }
-
   @UseGuards(SupabaseAuthGuard)
   @Put(':billId/confirm')
   confirmBill(
@@ -22,6 +16,15 @@ export class BillsController {
     @Body() dto: ConfirmBillDto,
   ) {
     return this.billsService.confirmBill(billId, tripId, dto);
+  }
+
+  @Get(':billId')
+  async getBill(@Param('billId') billId: string) {
+    const bill = await this.billsService.getBill(billId);
+    if (!bill) {
+      throw new NotFoundException('Bill not found');
+    }
+    return bill;
   }
 
   @Delete(':billId')

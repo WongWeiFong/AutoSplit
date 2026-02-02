@@ -90,6 +90,23 @@ export class BillsService {
     })
   }
 
+  async getBill(billId: string) {
+    return this.prisma.bill.findUnique({
+      where: { id: billId },
+      include: {
+        items: true,
+        participants: true,
+        splits: true,
+        paidBy: true,
+        receipt: {
+          select: {
+            imageUrl: true,
+          },
+        }
+      },
+    });
+  }
+
   async deleteBill(billId: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
       // 1. Check ownership or trip membership first
@@ -108,161 +125,4 @@ export class BillsService {
       });
     });
   }
-
-  // async createBill(userId: string, dto: CreateBillDto) {
-  //   await this.prisma.user.upsert({
-  //     where: { id: userId },
-  //     update: {},
-  //     create: { id: userId },
-  //   })
-
-  //   return this.prisma.bill.create({
-  //     data: {
-  //       title: dto.title,
-  //       merchantName: dto.merchantName,
-  //       totalAmount: dto.totalAmount,
-  //       createdBy: {
-  //         connect: { id: userId },
-  //       },
-  //     },
-  //   })
-  // }
-
-
-  
-  
-  // async addParticipants(
-  //   billId: string,
-  //   dto: {
-  //     participants: {
-  //       displayName: string
-  //       userId?: string
-  //       items: string[]
-  //     }[]
-  //   }
-  // ) {
-  //   return this.prisma.$transaction(async (tx) => {
-  //     for (const p of dto.participants) {
-  //       const participant = await tx.participant.create({
-  //         data: {
-  //           billId,
-  //           displayName: p.displayName,
-  //           userId: p.userId ?? null,
-  //         },
-  //       })
-  
-  //       if (p.items.length) {
-  //         await tx.splitRule.createMany({
-  //           data: p.items.map((itemId) => ({
-  //             billId,
-  //             participantId: participant.id,
-  //             billItemId: itemId,
-  //             type: 'EQUAL',
-  //           })),
-  //         })
-  //       }
-  //     }
-  
-  //     return tx.bill.findUnique({
-  //       where: { id: billId },
-  //       include: {
-  //         items: true,
-  //         participants: {
-  //           include: { billSplit: true },
-  //         },
-  //       },
-  //     })
-  //   })
-  // }
-  
-
-//   async createBill(userId: string, dto: CreateBillDto) {
-
-//      /**
-//    * STEP 0️⃣
-//    * Ensure Supabase user exists in public.users
-//    * This makes FK errors IMPOSSIBLE here
-//    */
-//   await this.prisma.user.upsert({
-//     where: { id: userId },
-//     update: {},
-//     create: {
-//       id: userId,
-//     },
-//   });
-// try{
-//     return this.prisma.$transaction(async (tx) => {
-
-//       const user = await tx.user.findUnique({ where: { id: userId } });
-//       if (!user) {
-//         throw new Error(`User ${userId} not found`);
-//       }
-//       // 1️⃣ Create bill first
-//       const bill = await tx.bill.create({
-//         data: {
-//           title: dto.title,
-//           merchantName: dto.merchantName,
-//           totalAmount: dto.totalAmount,
-//           createdById: userId,
-//         },
-//       });
-  
-//       // 2️⃣ Create bill items
-//       // if (dto.items?.length) {
-//       const billItems = dto.items?.length
-//         ? await tx.billItem.createMany({
-//           data: dto.items.map((item) => ({
-//             id : item.id,
-//             billId: bill.id,
-//             name: item.name,
-//             quantity: item.quantity,
-//             unitPrice: item.unitPrice,
-//             totalPrice: item.totalPrice,
-//             // description: item.description,
-//           })),
-//         })
-//         : [];
-      
-  
-//       // 3️⃣ Create participants + split rules
-//       if (dto.participants?.length) {
-//         for (const p of dto.participants) {
-//           const participant = await tx.participant.create({
-//             data: {
-//               billId: bill.id,
-//               displayName: p.displayName,
-//               userId: p.userId ?? null,
-//             },
-//           });
-  
-//           if (p.  ?.length) {
-//             await tx.billSplit.createMany({
-//               data: p.billSplit.map((rule) => ({
-//                 billId: bill.id,
-//                 participantId: participant.id,
-//                 billItemId: rule.billItemId,
-//                 type: rule.type,
-//                 amount: rule.amount ?? null,
-//               })),
-//             });
-//           }
-//         }
-//       }
-  
-//       // 4️⃣ Return full bill
-//       return tx.bill.findUnique({
-//         where: { id: bill.id },
-//         include: {
-//           items: true,
-//           participants: {
-//             include: { billSplit: true },
-//           },
-//         },
-//       });
-//     });
-//   } catch (error) {
-//     console.error('Create bill error:',error);
-//     throw new InternalServerErrorException(error);
-//   }
-//   }  
 }

@@ -48,6 +48,7 @@ export default function SubmitReceiptPage() {
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [itemSplits, setItemSplits] = useState<Map<number, ItemSplit[]>>(new Map())
   const [paidById, setPaidById] = useState<string | null>(null)
+  const [isEditingSummary, setIsEditingSummary] = useState(false)
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
   
@@ -214,7 +215,13 @@ export default function SubmitReceiptPage() {
 
   const handleSelectItem = (index: number) => {
     setSelectedItemIndex(index)
+    setIsEditingSummary(false)
     fetchUsers()
+  }
+
+  const handleSelectSummary = () => {
+    setSelectedItemIndex(null)
+    setIsEditingSummary(true)
   }
 
   const handleConfirm = async () => {
@@ -347,7 +354,7 @@ export default function SubmitReceiptPage() {
             </div>
 
             {/* Summary Section */}
-            <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+            <div onClick={handleSelectSummary} style={{ cursor: 'pointer', marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
               <h4 style={{ marginTop: 0 }}>Bill Summary</h4>
               <div style={{ fontSize: '0.9em' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
@@ -432,7 +439,33 @@ export default function SubmitReceiptPage() {
 
           {/* Right: Item Detail Panel */}
           <div style={{ flex: '1', minWidth: '400px' }}>
-            {selectedItemIndex !== null && editedData.items[selectedItemIndex] ? (
+          {isEditingSummary ? (
+            <div style={{ padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
+              <h3>Edit Bill Summary</h3>
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold' }}>Merchant Name:</label>
+                  <input 
+                    type="text" 
+                    value={editedData.merchantName || ''} 
+                    onChange={(e) => setEditedData({...editedData, merchantName: e.target.value})}
+                    style={{ width: '100%', padding: '8px' }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>Subtotal:</label>
+                    <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({...editedData, subtotal: parseFloat(e.target.value)})} style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label>Tax:</label>
+                    <input type="number" value={editedData.tax} onChange={(e) => setEditedData({...editedData, tax: parseFloat(e.target.value)})} style={{ width: '100%' }} />
+                  </div>
+                </div>
+                {/* Add inputs for totalDiscount, rounding, and totalAmount similarly */}
+              </div>
+            </div>
+            ) : (selectedItemIndex !== null && editedData.items[selectedItemIndex] ) ? (
               <div style={{ 
                 padding: '20px', 
                 backgroundColor: '#f9f9f9', 
