@@ -139,7 +139,7 @@ export default function SubmitReceiptPage() {
     }
   
     try {
-      const response = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/members`, {
+      const response = await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${tripId}/members`, {
       // const response = await fetch('${import.meta.env.BACKEND_URL}/users', {
         method: 'GET',
         headers: {
@@ -409,7 +409,7 @@ export default function SubmitReceiptPage() {
     }
   
     const res = await fetch(
-      `${import.meta.env.BACKEND_URL}/bills/${responseData.billId}/confirm`,
+      `${import.meta.env.BACKEND_URL}` + `/bills/${responseData.billId}/confirm`,
       {
         method: 'PUT',
         headers: {

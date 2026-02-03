@@ -33,11 +33,11 @@ export default function TripBillsPage() {
     const token = session.access_token;
     const headers = { Authorization: `Bearer ${token}` };
 
-    const billsRes = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/bills`, { headers });
+    const billsRes = await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${tripId}/bills`, { headers });
     if (billsRes.ok) setBills(await billsRes.json());
-    const balancesRes = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/balances`, { headers });
+    const balancesRes = await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${tripId}/balances`, { headers });
     if (balancesRes.ok) setBalances(await balancesRes.json());
-    const membersRes = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/members`, { headers });
+    const membersRes = await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${tripId}/members`, { headers });
     if (membersRes.ok) setTripMembers(await membersRes.json());
     setLoading(false);
 
