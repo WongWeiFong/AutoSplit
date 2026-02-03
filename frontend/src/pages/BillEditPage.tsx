@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { v4 as uuidv4 } from 'uuid'
 import { useParams, useNavigate } from 'react-router-dom'
-
+const API_URL = import.meta.env.VITE_BACKEND_URL
 interface ParsedData {
   title: string | null
   merchantName: string | null
@@ -69,7 +69,7 @@ export default function BillEditPage() {
       }
 
       try {
-        const res = await fetch(`${import.meta.env.BACKEND_URL}` + `/bills/${billId}`, {
+        const res = await fetch(`${API_URL}/bills/${billId}`, {
           headers: { Authorization: `Bearer ${session.access_token}` }
         });
         
@@ -143,7 +143,7 @@ export default function BillEditPage() {
   const fetchUsers = async (tripId: string, token: string) => {
     setLoadingUsers(true);
     try {
-      const response = await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${tripId}/members`, {
+      const response = await fetch(`${API_URL}/trips/${tripId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -428,7 +428,7 @@ export default function BillEditPage() {
     }
   
     const res = await fetch(
-      `${import.meta.env.BACKEND_URL}` + `/bills/${responseData.billId}/confirm`,
+      `${API_URL}/bills/${responseData.billId}/confirm`,
       {
         method: 'PUT',
         headers: {

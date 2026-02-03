@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
 
+const API_URL = import.meta.env.VITE_BACKEND_URL
+
 interface Trip {
   id: string
   tripName: string
@@ -57,7 +59,7 @@ export default function TripsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure?')) return;
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${id}`, {
+    await fetch(`${API_URL}/trips/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session?.access_token}` }
     });
@@ -68,7 +70,7 @@ export default function TripsPage() {
     const newName = prompt('Enter new trip name:');
     if (!newName) return;
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${import.meta.env.BACKEND_URL}` + `/trips/${id}`, {
+    await fetch(`${API_URL}/trips/${id}`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
@@ -88,7 +90,7 @@ export default function TripsPage() {
     if (!session) return
 
     const res = await fetch(
-      `${import.meta.env.BACKEND_URL}` + `/trips/${tripId}/bills`,
+      `${API_URL}/trips/${tripId}/bills`,
       {
         headers: {
           Authorization: `Bearer ${session.access_token}`
