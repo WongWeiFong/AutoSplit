@@ -46,7 +46,7 @@ export default function BillEditPage() {
   const [responseData, setResponseData] = useState<ResponseData | null>(null)
   const [editedData, setEditedData] = useState<ParsedData | null>(null)
   const [users, setUsers] = useState<User[]>([])
-  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [, setLoadingUsers] = useState(false)
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [itemSplits, setItemSplits] = useState<Map<number, ItemSplit[]>>(new Map())
   const [paidById, setPaidById] = useState<string | null>(null)
