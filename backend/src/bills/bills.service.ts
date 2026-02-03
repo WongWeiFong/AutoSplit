@@ -23,6 +23,7 @@ export class BillsService {
           tripId: dto.tripId,
           subtotal: dto.bill.subtotal,
           tax: dto.bill.tax,
+          taxPercentage: dto.bill.taxPercentage,
           totalDiscount: dto.bill.totalDiscount,
           rounding: dto.bill.rounding,
           totalAmount: dto.bill.totalAmount,
@@ -43,6 +44,7 @@ export class BillsService {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discount: item.discount,
+          tax: item.tax,
           totalPrice: item.totalPrice,
           description: item.description,
         })),
@@ -69,11 +71,20 @@ export class BillsService {
           .filter(s => s.tempItemId === item.tempItemId)
           .reduce((a, b) => a + b.amount, 0)
 
-          if (Math.abs(sum - item.totalPrice) !== 0) {
-          throw new Error(`Split mismatch for item ${item.name}` + sum + "sum more than totalPrice" + item.totalPrice)
-        // } else if (Math.abs(sum - item.totalPrice) <= 0.01) {
-        //   throw new Error(`Split mismatch for item ${item.name}` + sum + "sum lesser than totalPrice" + item.totalPrice)
+        if (Number(sum.toFixed(2)) !== Number(item.totalPrice.toFixed(2))) {
+          throw new Error(`Split mismatch for item ${item.name}` + sum + "sum not equal to totalPrice" + item.totalPrice)
         }
+
+
+        //   if (Math.abs(Number(sum.toFixed(2)) - Number(item.totalPrice.toFixed(2))) !== 0) {
+        //     throw new Error(`Split mismatch for item ${item.name}` + sum + "sum not equal to totalPrice" + item.totalPrice)
+        //   } else if (Math.abs(Number(sum.toFixed(2)) - Number(item.totalPrice.toFixed(2))) > 0.001) {
+        //   throw new Error(`Split mismatch for item ${item.name}` + sum + "sum more than totalPrice" + item.totalPrice)
+        //   } else if (Math.abs(Number(sum.toFixed(2)) - Number(item.totalPrice.toFixed(2))) < 0.001) {
+        //     throw new Error(`Split mismatch for item ${item.name}` + sum + "sum less than totalPrice" + item.totalPrice)
+        // // } else if (Math.abs(sum - item.totalPrice) <= 0.01) {
+        // //   throw new Error(`Split mismatch for item ${item.name}` + sum + "sum lesser than totalPrice" + item.totalPrice)
+        // }
       }
 
       // 7️⃣ Insert splits (FINAL, CORRECT)

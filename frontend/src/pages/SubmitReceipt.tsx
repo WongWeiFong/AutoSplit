@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useParams, useNavigate } from 'react-router-dom'
 
 interface ParsedData {
+  title: string | null
   merchantName: string | null
   items: Array<{
     tempItemId: string
@@ -11,10 +12,12 @@ interface ParsedData {
     quantity: number
     unitPrice: number
     discount: number
+    tax: number
     totalPrice: number
     description: string
   }>
   subtotal: number
+  taxPercentage: number
   tax: number
   totalDiscount: number
   rounding: number
@@ -159,13 +162,57 @@ export default function SubmitReceiptPage() {
     setLoadingUsers(false)
   }
 
-  const updateItem = (index: number, field: keyof ParsedData['items'][0], value: string | number) => {
-    if (editedData) {
-      const newItems = [...editedData.items]
-      newItems[index] = { ...newItems[index], [field]: value }
-      setEditedData({ ...editedData, items: newItems })
-    }
-  }
+  const addNewItem = () => {
+    if (!editedData) return;
+    const newItem = {
+      tempItemId: uuidv4(),
+      name: 'New Item',
+      quantity: 1,
+      unitPrice: 0,
+      discount: 0,
+      tax: 0,
+      totalPrice: 0,
+      description: ''
+    };
+
+    const newItems = [...editedData.items, newItem];
+    const results = recalculateItemAndBill(newItems, editedData.taxPercentage, editedData.rounding);
+
+    setEditedData({
+      ...editedData!,
+      ...results
+    });
+  };
+
+  const removeItem = (index: number) => {
+    if (!editedData || !confirm('Remove this item?')) return;
+    const newItems = editedData!.items.filter((_, i) => i !== index);
+    const results = recalculateItemAndBill(newItems, editedData.taxPercentage, editedData.rounding);
+  setEditedData({ ...editedData, ...results });
+  setSelectedItemIndex(null);
+};
+
+  // const updateItem = (index: number, field: keyof ParsedData['items'][0], value: string | number) => {
+  //   if (editedData) {
+  //     const newItems = [...editedData.items]
+  //     newItems[index] = { ...newItems[index], [field]: value }
+  //     setEditedData({ ...editedData, items: newItems })
+  //   }
+  // }
+
+  const updateItem = (index: number, field: string, value: string | number) => {
+    if (!editedData) return;
+  
+    const newItems = [...editedData.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+  
+    const results = recalculateItemAndBill(newItems, editedData.taxPercentage, editedData.rounding);
+
+  setEditedData({
+    ...editedData,
+    ...results
+  });
+};
 
   const toggleItemParticipant = (itemIndex: number, userId: string) => {
     const currentSplits = itemSplits.get(itemIndex) || []
@@ -224,6 +271,75 @@ export default function SubmitReceiptPage() {
     setIsEditingSummary(true)
   }
 
+  // const recalculateBill = (currentData: ParsedData, newRate: number) => {
+  //   let totalSubtotal = 0;
+  //   let totalTaxAmount = 0;
+  
+  //   //calculate base price and add tax
+  //   const updatedItems = currentData.items.map(item => {
+  //     const basePrice = (item.quantity * item.unitPrice) - item.discount;
+  //     const itemTax = basePrice * (newRate / 100);
+  //     const itemTotalWithTax = basePrice + itemTax;
+  
+  //     totalSubtotal += basePrice;
+  //     totalTaxAmount += itemTax;
+  
+  //     return {
+  //       ...item,
+  //       totalPrice: Number(itemTotalWithTax.toFixed(2))
+  //     };
+  //   });
+  
+  //   //update bill data
+  //   return {
+  //     ...currentData,
+  //     items: updatedItems,
+  //     taxPercentage: newRate,
+  //     subtotal: Number(totalSubtotal.toFixed(2)),
+  //     tax: Number(totalTaxAmount.toFixed(2)),
+  //     totalAmount: Number((totalSubtotal + totalTaxAmount + currentData.rounding).toFixed(2))
+  //   };
+  // };
+
+  const recalculateItemAndBill = (
+    items: any[],
+    taxRate: number,
+    rounding: number
+  ) => {
+    let billSubtotal = 0;
+    let billTotalDiscount = 0;
+    let billTotalTax = 0;
+  
+    const updatedItems = items.map(item => {
+      // 1. Calculate Item Subtotal (Qty * Price)
+      const itemSubtotal = (item.quantity * item.unitPrice);
+      // 2. Taxable amount for this item
+      const itemTaxableAmount = itemSubtotal - item.discount;
+      // 3. Calculate Item Tax based on the percentage
+      const itemTax = itemTaxableAmount * (taxRate / 100);
+      // 4. Calculate Item Total Price
+      const itemTotalPrice = itemTaxableAmount + itemTax;
+  
+      billSubtotal += itemSubtotal;
+      billTotalDiscount += item.discount;
+      billTotalTax += itemTax;
+  
+      return {
+        ...item,
+        tax: Number(itemTax.toFixed(2)),
+        totalPrice: Number(itemTotalPrice.toFixed(2))
+      };
+    });
+  
+    return {
+      items: updatedItems,
+      subtotal: Number(billSubtotal.toFixed(2)),
+      totalDiscount: Number(billTotalDiscount.toFixed(2)),
+      tax: Number(billTotalTax.toFixed(2)),
+      totalAmount: Number((billSubtotal - billTotalDiscount + billTotalTax + rounding).toFixed(2))
+    };
+  };
+
   const handleConfirm = async () => {
     if (!responseData || !editedData) return
   
@@ -247,6 +363,7 @@ export default function SubmitReceiptPage() {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       discount: item.discount ?? 0,
+      tax: item.tax ?? 0,
       totalPrice: item.totalPrice,
       description: item.description ?? '',
     }))
@@ -281,6 +398,7 @@ export default function SubmitReceiptPage() {
       bill: {
         subtotal: editedData.subtotal,
         tax: editedData.tax,
+        taxPercentage: editedData.taxPercentage ?? 0,
         totalDiscount: editedData.totalDiscount ?? 0,
         rounding: editedData.rounding,
         totalAmount: editedData.totalAmount,
@@ -362,7 +480,7 @@ export default function SubmitReceiptPage() {
                   <span>${editedData.subtotal?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>Tax:</span>
+                  <span>Tax: {editedData.taxPercentage?.toFixed(2) || '0.00'}%</span>
                   <span>${editedData.tax?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
@@ -435,6 +553,12 @@ export default function SubmitReceiptPage() {
                 </div>
               )
             })}
+            <button 
+              onClick={addNewItem}
+              style={{ width: '100%', padding: '10px', marginTop: '10px', border: '2px dashed #ccc', background: 'transparent', cursor: 'pointer' }}
+            >
+              + Add New Item
+            </button>
           </div>
 
           {/* Right: Item Detail Panel */}
@@ -443,6 +567,16 @@ export default function SubmitReceiptPage() {
             <div style={{ padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
               <h3>Edit Bill Summary</h3>
               <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold' }}>Bill Title:</label>
+                  <input 
+                    type="text" 
+                    value={editedData.title || ''} 
+                    onChange={(e) => setEditedData({...editedData, title: e.target.value})}
+                    placeholder="e.g., Dinner at McDonald's"
+                    style={{ width: '100%', padding: '8px' }}
+                  />
+                </div>
                 <div>
                   <label style={{ fontWeight: 'bold' }}>Merchant Name:</label>
                   <input 
@@ -455,14 +589,57 @@ export default function SubmitReceiptPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <label>Subtotal:</label>
-                    <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({...editedData, subtotal: parseFloat(e.target.value)})} style={{ width: '100%' }} />
+                    <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({...editedData, subtotal: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
                   </div>
                   <div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <label>Tax:</label>
-                    <input type="number" value={editedData.tax} onChange={(e) => setEditedData({...editedData, tax: parseFloat(e.target.value)})} style={{ width: '100%' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <input 
+                      type="number" 
+                      value={editedData.taxPercentage || 0} 
+                      onChange={(e) => {
+                        const newRate = parseFloat(e.target.value) || 0;
+                        const results = recalculateItemAndBill(editedData.items, newRate, editedData.rounding);
+                        setEditedData({
+                          ...editedData,
+                          taxPercentage: newRate,
+                          ...results
+                        });
+                      }} 
+                      style={{ width: '100%', padding: '8px' }} 
+                    /> %
+                    <input 
+                      type="number" 
+                      value={editedData.tax} 
+                      onChange={(e) => {
+                        // If user edits amount, calculate the effective rate and apply to items
+                        const newTax = parseFloat(e.target.value) || 0;
+                        const results = recalculateItemAndBill(editedData.items, editedData.taxPercentage, newTax);
+                        setEditedData({
+                          ...editedData,
+                          ...results
+                        });                      }} 
+                      style={{ width: '100%', padding: '8px' }} 
+                    />
+                    </div>
+                    </div>
                   </div>
                 </div>
-                {/* Add inputs for totalDiscount, rounding, and totalAmount similarly */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label>Discount:</label>
+                    <input type="number" value={editedData.totalDiscount} onChange={(e) => setEditedData({...editedData, totalDiscount: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
+                  </div>
+                  <div>
+                    <label>Rounding:</label>
+                    <input type="number" value={editedData.rounding} onChange={(e) => setEditedData({...editedData, rounding: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold' }}>Total Amount:</label>
+                  <input type="number" value={editedData.totalAmount} onChange={(e) => setEditedData({...editedData, totalAmount: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
+                </div>
               </div>
             </div>
             ) : (selectedItemIndex !== null && editedData.items[selectedItemIndex] ) ? (
@@ -472,7 +649,23 @@ export default function SubmitReceiptPage() {
                 borderRadius: '8px',
                 border: '1px solid #ddd'
               }}>
-                <h3 style={{ marginTop: 0 }}>Item Details</h3>
+                <h3 style={{ display: 'flex', justifyContent: 'space-between' }}>
+                Item Details
+                <button
+                  onClick={() => removeItem(selectedItemIndex)}
+                  style={{
+                    background: '#ff5252',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.8em',
+                  }}
+                >
+                  Remove Item
+                </button>
+              </h3>
                 
                 {/* Item Fields */}
                 <div style={{ marginBottom: '20px' }}>
@@ -507,8 +700,17 @@ export default function SubmitReceiptPage() {
                       />
                     </div>
                   </div>
-                  
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tax Amount:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].tax}
+                        onChange={(e) => updateItem(selectedItemIndex, 'tax', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Discount:</label>
                       <input
@@ -519,6 +721,8 @@ export default function SubmitReceiptPage() {
                         style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
                       />
                     </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Total Price:</label>
                       <input

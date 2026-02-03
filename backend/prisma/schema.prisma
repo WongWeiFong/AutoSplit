@@ -29,6 +29,7 @@ model Bill {
 
   subtotal      Decimal? @default(0)
   tax           Decimal? @default(0)
+  taxPercentage Decimal? @default(0) @map("tax_percentage")
   totalDiscount Decimal? @default(0) @map("total_discount")
   rounding      Decimal? @default(0)
   totalAmount   Decimal? @default(0) @map("total_amount")
@@ -56,6 +57,7 @@ model BillItem {
   quantity     Decimal @map("quantity")
   unitPrice    Decimal @map("unit_price")
   discount     Decimal @map("discount")
+  tax          Decimal @map("tax")
   totalPrice   Decimal @map("total_price")
   description  String? @map("description")
 

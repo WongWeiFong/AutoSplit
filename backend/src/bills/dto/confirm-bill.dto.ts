@@ -7,6 +7,7 @@ export class ConfirmBillDto {
   bill: {
     subtotal: number
     tax: number
+    taxPercentage: number
     totalDiscount: number
     rounding: number
     totalAmount: number
@@ -18,6 +19,7 @@ export class ConfirmBillDto {
     quantity: number
     unitPrice: number
     discount: number
+    tax: number
     totalPrice: number
     description?: string
   }[]

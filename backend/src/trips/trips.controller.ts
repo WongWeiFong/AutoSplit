@@ -30,7 +30,9 @@ export class TripsController {
   }
 
   @Delete(':id')
-  deleteTrip(@GetUser('id') userId: string, @Param('id') tripId: string) {
+  deleteTrip(
+    @GetUser('id') userId: string,
+    @Param('id') tripId: string) {
     return this.tripsService.deleteTrip(userId, tripId)
   }
 

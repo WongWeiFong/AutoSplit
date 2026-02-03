@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useParams, useNavigate } from 'react-router-dom'
 
 interface ParsedData {
+  title: string | null
   merchantName: string | null
   items: Array<{
     tempItemId: string
@@ -11,10 +12,12 @@ interface ParsedData {
     quantity: number
     unitPrice: number
     discount: number
+    tax: number
     totalPrice: number
     description: string
   }>
   subtotal: number
+  taxPercentage: number
   tax: number
   totalDiscount: number
   rounding: number
@@ -81,7 +84,9 @@ export default function BillEditPage() {
 
         // Reconstruct Edited Data (handling Decimal strings from DB)
         const mappedEditedData: ParsedData = {
+          title: data.title,
           merchantName: data.merchantName,
+          taxPercentage: Number(data.taxPercentage),
           subtotal: Number(data.subtotal),
           tax: Number(data.tax),
           totalDiscount: Number(data.totalDiscount),
@@ -153,13 +158,87 @@ export default function BillEditPage() {
     }
   };
 
-  const updateItem = (index: number, field: keyof ParsedData['items'][0], value: string | number) => {
-    if (editedData) {
-      const newItems = [...editedData.items]
-      newItems[index] = { ...newItems[index], [field]: value }
-      setEditedData({ ...editedData, items: newItems })
-    }
-  }
+  const addNewItem = () => {
+    if (!editedData) return;
+    const newItem = {
+      tempItemId: uuidv4(),
+      name: 'New Item',
+      quantity: 1,
+      unitPrice: 0,
+      discount: 0,
+      tax: 0,
+      totalPrice: 0,
+      description: ''
+    };
+    setEditedData({
+      ...editedData!,
+      items: [...editedData!.items, newItem]
+    });
+  };
+  
+  const removeItem = (index: number) => {
+    if (!editedData || !confirm('Remove this item?')) return;
+    if (!editedData) return;
+    const newItems = editedData!.items.filter((_, i) => i !== index);
+    const newSplits = new Map<number, ItemSplit[]>();
+    itemSplits.forEach((splits, key) => {
+      if (key < index) {
+        newSplits.set(key, splits);
+      } else if (key > index) {
+        newSplits.set(key - 1, splits);
+      }
+    });
+  
+    const newSubtotal = newItems.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
+    const newTotalDiscount = newItems.reduce((sum, i) => sum + i.discount, 0);
+    const taxableAmount = newSubtotal - newTotalDiscount;
+    const newTaxAmount = taxableAmount * (editedData.taxPercentage / 100);
+
+    setEditedData({
+      ...editedData,
+      items: newItems,
+      subtotal: Number(newSubtotal.toFixed(2)),
+      totalDiscount: Number(newTotalDiscount.toFixed(2)),
+      tax: Number(newTaxAmount.toFixed(2)),
+      totalAmount: Number((taxableAmount + newTaxAmount + editedData.rounding).toFixed(2))
+    });
+    setSelectedItemIndex(null);
+  };
+
+  const updateItem = (index: number, field: string, value: string | number) => {
+    if (!editedData) return;
+  
+    const newItems = [...editedData.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+  
+    const results = recalculateItemAndBill(newItems, editedData.taxPercentage, editedData.rounding);
+
+      setEditedData({
+        ...editedData,
+        ...results
+      });
+
+    // // 1. Calculate Item Total: (Qty * UnitPrice) - Discount + Tax
+    // item.totalPrice = Number(((item.quantity * item.unitPrice) - item.discount + item.tax).toFixed(2));
+    // newItems[index] = item;
+  
+    // // 2. Calculate Bill Totals
+    // const newSubtotal = newItems.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
+    // const newTotalDiscount = newItems.reduce((sum, i) => sum + i.discount, 0);
+    
+    // // 3. Apply Tax (based on the new subtotal minus discounts)
+    // const taxableAmount = newSubtotal - newTotalDiscount;
+    // const newTaxAmount = taxableAmount * (editedData.taxPercentage / 100);
+  
+    // setEditedData({
+    //   ...editedData,
+    //   items: newItems,
+    //   subtotal: Number(newSubtotal.toFixed(2)),
+    //   totalDiscount: Number(newTotalDiscount.toFixed(2)),
+    //   tax: Number(newTaxAmount.toFixed(2)),
+    //   totalAmount: Number((taxableAmount + newTaxAmount + editedData.rounding).toFixed(2))
+    // });
+  };
 
   const toggleItemParticipant = (itemIndex: number, userId: string) => {
     const currentSplits = itemSplits.get(itemIndex) || []
@@ -217,6 +296,77 @@ export default function BillEditPage() {
     setIsEditingSummary(true)
   }
 
+  // const recalculateBill = (currentData: ParsedData, newRate: number) => {
+  //   let totalSubtotal = 0;
+  //   let totalTaxPercentage = 0;
+  //   let totalTaxAmount = 0;
+  
+  //   //calculate base price and add tax
+  //   const updatedItems = currentData.items.map(item => {
+  //     const basePrice = (item.quantity * item.unitPrice) - item.discount;
+  //     const itemTax = basePrice * (newRate / 100);
+  //     const itemTotalWithTax = basePrice + itemTax;
+  
+  //     totalSubtotal += basePrice;
+  //     totalTaxAmount += itemTax;
+  
+  //     return {
+  //       ...item,
+  //       totalPrice: Number(itemTotalWithTax.toFixed(2))
+  //     };
+  //   });
+  
+  //   //update bill data
+  //   return {
+  //     ...currentData,
+  //     items: updatedItems,
+  //     taxPercentage: newRate,
+  //     subtotal: Number(totalSubtotal.toFixed(2)),
+  //     tax: Number(totalTaxAmount.toFixed(2)),
+  //     totalAmount: Number((totalSubtotal + totalTaxAmount + currentData.rounding).toFixed(2))
+  //   };
+  // };
+
+  const recalculateItemAndBill = (
+    items: ParsedData['items'], 
+    taxRate: number, 
+    rounding: number
+  ) => {
+    let billSubtotal = 0;
+    let billTotalDiscount = 0;
+    let billTotalTax = 0;
+  
+    const updatedItems = items.map(item => {
+      // 1. Calculate Item Subtotal (Qty * Price - Discount)
+      const itemSubtotal = (item.quantity * item.unitPrice) - item.discount;
+      
+      // 2. Calculate Item Tax based on the percentage
+      const itemTax = itemSubtotal * (taxRate / 100);
+      
+      // 3. Calculate Item Total Price
+      const itemTotalPrice = itemSubtotal + itemTax;
+  
+      // Accumulate Bill Totals
+      billSubtotal += (item.quantity * item.unitPrice);
+      billTotalDiscount += item.discount;
+      billTotalTax += itemTax;
+  
+      return {
+        ...item,
+        tax: Number(itemTax.toFixed(2)),
+        totalPrice: Number(itemTotalPrice.toFixed(2))
+      };
+    });
+  
+    return {
+      items: updatedItems,
+      subtotal: Number(billSubtotal.toFixed(2)),
+      totalDiscount: Number(billTotalDiscount.toFixed(2)),
+      tax: Number(billTotalTax.toFixed(2)),
+      totalAmount: Number((billSubtotal - billTotalDiscount + billTotalTax + rounding).toFixed(2))
+    };
+  };
+  
   const handleConfirm = async () => {
     if (!responseData || !editedData) return
   
@@ -234,6 +384,7 @@ export default function BillEditPage() {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       discount: item.discount ?? 0,
+      tax: (item as any).tax ?? 0,
       totalPrice: item.totalPrice,
       description: item.description ?? '',
     }))
@@ -266,6 +417,7 @@ export default function BillEditPage() {
       bill: {
         subtotal: editedData.subtotal,
         tax: editedData.tax,
+        taxPercentage: editedData.taxPercentage ?? 0,
         totalDiscount: editedData.totalDiscount ?? 0,
         rounding: editedData.rounding,
         totalAmount: editedData.totalAmount,
@@ -394,7 +546,6 @@ export default function BillEditPage() {
             return (
               <div
                 key={index}
-                onClick={() => handleSelectItem(index)}
                 style={{
                   padding: '12px',
                   marginBottom: '8px',
@@ -407,7 +558,9 @@ export default function BillEditPage() {
                     : isFullyAssigned ? '#e8f5e9' : 'white',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
+                  position: 'relative',
                 }}
+                onClick={() => handleSelectItem(index)}
               >
                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
                   {item.quantity}x {item.name}
@@ -424,9 +577,36 @@ export default function BillEditPage() {
                     {splits.length} participant(s) • ${totalSplit.toFixed(2)} assigned
                   </div>
                 )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeItem(index);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    bottom: '8px',
+                    right: '8px',
+                    background: '#ff5252',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '0.75em',
+                    cursor: 'pointer',
+                  }}
+                >
+                  X
+                </button>
+
               </div>
             )
           })}
+          <button 
+            onClick={addNewItem}
+            style={{ width: '100%', padding: '10px', marginTop: '10px', border: '2px dashed #ccc', background: 'transparent', cursor: 'pointer' }}
+          >
+            + Add New Item
+          </button>
         </div>
 
         {/* Right: Detail Panel */}
@@ -435,6 +615,16 @@ export default function BillEditPage() {
             <div style={{ padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
               <h3>Edit Bill Summary</h3>
               <div style={{ display: 'grid', gap: '12px' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold' }}>Bill Title:</label>
+                  <input 
+                    type="text" 
+                    value={editedData.title || ''} 
+                    onChange={(e) => setEditedData({...editedData, title: e.target.value})}
+                    placeholder="e.g., Dinner at McDonald's"
+                    style={{ width: '100%', padding: '8px' }}
+                  />
+                </div>
                 <div>
                   <label style={{ fontWeight: 'bold' }}>Merchant Name:</label>
                   <input 
@@ -450,8 +640,38 @@ export default function BillEditPage() {
                     <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({...editedData, subtotal: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
                   </div>
                   <div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <label>Tax:</label>
-                    <input type="number" value={editedData.tax} onChange={(e) => setEditedData({...editedData, tax: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <input 
+                      type="number" 
+                      value={editedData.taxPercentage || 0} 
+                      onChange={(e) => {
+                        const newRate = parseFloat(e.target.value) || 0;
+                        const results = recalculateItemAndBill(editedData.items, newRate, editedData.rounding);
+                        setEditedData({
+                          ...editedData,
+                          taxPercentage: newRate,
+                          ...results
+                        });
+                      }} 
+                      style={{ width: '100%', padding: '8px' }} 
+                    /> %
+                    <input 
+                      type="number" 
+                      value={editedData.tax} 
+                      onChange={(e) => {
+                        const newTax = parseFloat(e.target.value) || 0;
+                        const results = recalculateItemAndBill(editedData.items, editedData.taxPercentage, newTax);
+                        setEditedData({
+                          ...editedData,
+                          ...results
+                        });
+                      }} 
+                      style={{ width: '100%', padding: '8px' }} 
+                    />
+                    </div>
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -471,67 +691,111 @@ export default function BillEditPage() {
               </div>
             </div>
           ) : (selectedItemIndex !== null && editedData.items[selectedItemIndex]) ? (
-            <div style={{ padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
-              <h3>Item Details</h3>
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f9f9f9',
+              borderRadius: '8px',
+              border: '1px solid #ddd'
+            }}>
+              <h3 style={{ display: 'flex', justifyContent: 'space-between' }}>
+                Item Details
+                <button
+                  onClick={() => removeItem(selectedItemIndex)}
+                  style={{
+                    background: '#ff5252',
+                    color: 'white',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.8em',
+                  }}
+                >
+                  Remove Item
+                </button>
+              </h3>
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Name:</label>
-                  <input
-                    type="text"
-                    value={editedData.items[selectedItemIndex].name}
-                    onChange={(e) => updateItem(selectedItemIndex, 'name', e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                  />
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Name:</label>
+                    <input
+                      type="text"
+                      value={editedData.items[selectedItemIndex].name}
+                      onChange={(e) => updateItem(selectedItemIndex, 'name', e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Quantity:</label>
+                      <input
+                        type="number"
+                        value={editedData.items[selectedItemIndex].quantity}
+                        onChange={(e) => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Unit Price:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].unitPrice}
+                        onChange={(e) => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tax Amount:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].tax}
+                        onChange={(e) => updateItem(selectedItemIndex, 'tax', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Discount:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].discount}
+                        onChange={(e) => updateItem(selectedItemIndex, 'discount', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Total Price:</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedData.items[selectedItemIndex].totalPrice}
+                        onChange={(e) => updateItem(selectedItemIndex, 'totalPrice', parseFloat(e.target.value) || 0)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Description:</label>
+                    <textarea
+                      value={editedData.items[selectedItemIndex].description}
+                      onChange={(e) => updateItem(selectedItemIndex, 'description', e.target.value)}
+                      rows={3}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical', boxSizing: 'border-box' }}
+                    />
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Quantity:</label>
-                    <input
-                      type="number"
-                      value={editedData.items[selectedItemIndex].quantity}
-                      onChange={(e) => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Unit Price:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editedData.items[selectedItemIndex].unitPrice}
-                      onChange={(e) => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Discount:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editedData.items[selectedItemIndex].discount}
-                      onChange={(e) => updateItem(selectedItemIndex, 'discount', parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Total Price:</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editedData.items[selectedItemIndex].totalPrice}
-                      onChange={(e) => updateItem(selectedItemIndex, 'totalPrice', parseFloat(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                    />
-                  </div>
-                </div>
-              </div>
 
               <div style={{ borderTop: '2px solid #ddd', paddingTop: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <h4 style={{ margin: 0 }}>Assign Participants</h4>
-                  <button type="button" onClick={() => splitEvenly(selectedItemIndex)}>Split Evenly</button>
+                  <button type="button" onClick={() => splitEvenly(selectedItemIndex)} style={{ background: '#4CAF50', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8em' }}>Split Evenly</button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px' }}>
                   {users.map(user => {
