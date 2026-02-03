@@ -33,7 +33,7 @@ export default function TripsPage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('${import.meta.env.BACKEND_URL}/trips', {
+    const res = await fetch(`${API_URL}/trips`, {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }
@@ -44,7 +44,7 @@ export default function TripsPage() {
 
   const handleCreate = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch('${import.meta.env.BACKEND_URL}/trips', {
+    await fetch(`${API_URL}/trips`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

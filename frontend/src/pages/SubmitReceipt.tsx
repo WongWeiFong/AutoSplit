@@ -94,7 +94,7 @@ export default function SubmitReceiptPage() {
     formData.append('tripId', tripId)
 
     try {
-      const response = await fetch('${import.meta.env.BACKEND_URL}/receipts/upload', {
+      const response = await fetch(`${API_URL}/receipts/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -140,7 +140,6 @@ export default function SubmitReceiptPage() {
   
     try {
       const response = await fetch(`${API_URL}/trips/${tripId}/members`, {
-      // const response = await fetch('${import.meta.env.BACKEND_URL}/users', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${session.access_token}`,

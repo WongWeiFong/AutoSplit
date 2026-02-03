@@ -42,19 +42,11 @@ export default function TripBillsPage() {
     setLoading(false);
 
   }
-  // const fetchBills = async () => {
-  //   const { data: { session } } = await supabase.auth.getSession();
-  //   const res = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/bills`, {
-  //     headers: { Authorization: `Bearer ${session?.access_token}` }
-  //   });
-  //   if (res.ok) setBills(await res.json());
-  //   setLoading(false);
-  // };
 
   const handleDeleteBill = async (billId: string) => {
     if (!confirm('Delete this bill?')) return;
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${import.meta.env.BACKEND_URL}/bills/${billId}`, {
+    await fetch(`${API_URL}/bills/${billId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session?.access_token}` }
     });
