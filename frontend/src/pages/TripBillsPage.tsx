@@ -33,18 +33,18 @@ export default function TripBillsPage() {
     const token = session.access_token;
     const headers = { Authorization: `Bearer ${token}` };
 
-    const billsRes = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/bills`, { headers });
+    const billsRes = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/bills`, { headers });
     if (billsRes.ok) setBills(await billsRes.json());
-    const balancesRes = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/balances`, { headers });
+    const balancesRes = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/balances`, { headers });
     if (balancesRes.ok) setBalances(await balancesRes.json());
-    const membersRes = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/members`, { headers });
+    const membersRes = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/members`, { headers });
     if (membersRes.ok) setTripMembers(await membersRes.json());
     setLoading(false);
 
   }
   // const fetchBills = async () => {
   //   const { data: { session } } = await supabase.auth.getSession();
-  //   const res = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/bills`, {
+  //   const res = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/bills`, {
   //     headers: { Authorization: `Bearer ${session?.access_token}` }
   //   });
   //   if (res.ok) setBills(await res.json());
@@ -54,7 +54,7 @@ export default function TripBillsPage() {
   const handleDeleteBill = async (billId: string) => {
     if (!confirm('Delete this bill?')) return;
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/bills/${billId}`, {
+    await fetch(`${import.meta.env.BACKEND_URL}/bills/${billId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session?.access_token}` }
     });

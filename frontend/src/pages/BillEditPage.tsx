@@ -69,7 +69,7 @@ export default function BillEditPage() {
       }
 
       try {
-        const res = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/bills/${billId}`, {
+        const res = await fetch(`${import.meta.env.BACKEND_URL}/bills/${billId}`, {
           headers: { Authorization: `Bearer ${session.access_token}` }
         });
         
@@ -143,7 +143,7 @@ export default function BillEditPage() {
   const fetchUsers = async (tripId: string, token: string) => {
     setLoadingUsers(true);
     try {
-      const response = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/members`, {
+      const response = await fetch(`${import.meta.env.BACKEND_URL}/trips/${tripId}/members`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -428,7 +428,7 @@ export default function BillEditPage() {
     }
   
     const res = await fetch(
-      `${import.meta.env.SUPABASE_BACKEND_URL}/bills/${responseData.billId}/confirm`,
+      `${import.meta.env.BACKEND_URL}/bills/${responseData.billId}/confirm`,
       {
         method: 'PUT',
         headers: {
