@@ -94,7 +94,7 @@ export default function SubmitReceiptPage() {
     formData.append('tripId', tripId)
 
     try {
-      const response = await fetch('http://localhost:3000/receipts/upload', {
+      const response = await fetch('${import.meta.env.SUPABASE_BACKEND_URL}/receipts/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -139,8 +139,8 @@ export default function SubmitReceiptPage() {
     }
   
     try {
-      const response = await fetch(`http://localhost:3000/trips/${tripId}/members`, {
-      // const response = await fetch('http://localhost:3000/users', {
+      const response = await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/members`, {
+      // const response = await fetch('${import.meta.env.SUPABASE_BACKEND_URL}/users', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -409,7 +409,7 @@ export default function SubmitReceiptPage() {
     }
   
     const res = await fetch(
-      `http://localhost:3000/bills/${responseData.billId}/confirm`,
+      `${import.meta.env.SUPABASE_BACKEND_URL}/bills/${responseData.billId}/confirm`,
       {
         method: 'PUT',
         headers: {

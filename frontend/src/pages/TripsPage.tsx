@@ -31,7 +31,7 @@ export default function TripsPage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const res = await fetch('http://localhost:3000/trips', {
+    const res = await fetch('${import.meta.env.SUPABASE_BACKEND_URL}/trips', {
       headers: {
         Authorization: `Bearer ${session.access_token}`
       }
@@ -42,7 +42,7 @@ export default function TripsPage() {
 
   const handleCreate = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch('http://localhost:3000/trips', {
+    await fetch('${import.meta.env.SUPABASE_BACKEND_URL}/trips', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export default function TripsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure?')) return;
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`http://localhost:3000/trips/${id}`, {
+    await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session?.access_token}` }
     });
@@ -68,7 +68,7 @@ export default function TripsPage() {
     const newName = prompt('Enter new trip name:');
     if (!newName) return;
     const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`http://localhost:3000/trips/${id}`, {
+    await fetch(`${import.meta.env.SUPABASE_BACKEND_URL}/trips/${id}`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ export default function TripsPage() {
     if (!session) return
 
     const res = await fetch(
-      `http://localhost:3000/trips/${tripId}/bills`,
+      `${import.meta.env.SUPABASE_BACKEND_URL}/trips/${tripId}/bills`,
       {
         headers: {
           Authorization: `Bearer ${session.access_token}`
