@@ -3,6 +3,10 @@
       {
         "source": "/api/:path*",
         "destination": "https://autosplit-api.vercel.app/:path*"
+      },
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
       }
     ]
   }
