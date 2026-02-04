@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "postinstall": "prisma generate",
+    "postinstall": "npx prisma generate",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -27,6 +27,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@prisma/client": "^7.2.0",
     "@prisma/adapter-pg": "^7.2.0",
     "@supabase/supabase-js": "^2.91.1",
     "class-transformer": "^0.5.1",
@@ -39,6 +40,7 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "prisma": "^7.2.0",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
