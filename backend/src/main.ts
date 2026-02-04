@@ -13,7 +13,7 @@ async function bootstrap() {
     origin: process.env.VITE_FRONTEND_URL,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+    allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
   });
 
   await app.init();
