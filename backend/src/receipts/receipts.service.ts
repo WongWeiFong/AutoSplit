@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-// import Tesseract from 'tesseract.js';
-import Tesseract from "tesseract.js/dist/tesseract.min.js"; 
+import Tesseract from 'tesseract.js';
+import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { v4 as uuid } from 'uuid';
@@ -124,7 +124,22 @@ export class ReceiptsService {
   // =========================
   private async runTesseract(imageBuffer: Buffer): Promise<string> {
     const processed = await this.preprocessImage(imageBuffer);
-    const worker = await Tesseract.createWorker('eng');
+    // const worker = await Tesseract.createWorker('eng');
+    // const worker = await Tesseract.createWorker({
+    //   langPath: ['eng'],
+    //   logger: m => console.log(m),
+    //   corePath: path.resolve(
+    //     __dirname,
+    //      '../node_modules/tesseract.js-core/tesseract-core.wasm'
+    //     ),
+    // });
+    const worker = await Tesseract.createWorker('eng', undefined, {
+      logger: m => console.log(m),
+      corePath: path.resolve(
+        __dirname,
+         '../node_modules/tesseract.js-core/tesseract-core.wasm'
+        ),
+    })
     await worker.setParameters({
       tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
     });
