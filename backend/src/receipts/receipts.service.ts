@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import Tesseract from 'tesseract.js';
+// import Tesseract from 'tesseract.js';
+import Tesseract from "tesseract.js/dist/tesseract.min.js"; 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import sharp from 'sharp';
 import { v4 as uuid } from 'uuid';
