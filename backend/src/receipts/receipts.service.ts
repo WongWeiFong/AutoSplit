@@ -133,13 +133,19 @@ export class ReceiptsService {
     //      '../node_modules/tesseract.js-core/tesseract-core.wasm'
     //     ),
     // });
-    const worker = await Tesseract.createWorker('eng', undefined, {
+    // Use CDNs instead of local paths for Vercel compatibility
+    const worker = await Tesseract.createWorker('eng', 1, {
       logger: m => console.log(m),
-      corePath: path.resolve(
-        __dirname,
-         '../node_modules/tesseract.js-core/tesseract-core.wasm'
-        ),
-    })
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm',
+    });
+    // const worker = await Tesseract.createWorker('eng', undefined, {
+    //   logger: m => console.log(m),
+    //   corePath: path.resolve(
+    //     __dirname,
+    //      '../node_modules/tesseract.js-core/tesseract-core.wasm'
+    //     ),
+    // })
     await worker.setParameters({
       tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
     });
