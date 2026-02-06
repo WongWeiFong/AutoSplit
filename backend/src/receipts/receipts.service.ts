@@ -123,44 +123,47 @@ export class ReceiptsService {
   // OCR WITH TESSERACT
   // =========================
   private async runTesseract(imageBuffer: Buffer): Promise<string> {
-    const processed = await this.preprocessImage(imageBuffer);
-    // const worker = await Tesseract.createWorker('eng');
-    // const worker = await Tesseract.createWorker({
-    //   langPath: ['eng'],
-    //   logger: m => console.log(m),
-    //   corePath: path.resolve(
-    //     __dirname,
-    //      '../node_modules/tesseract.js-core/tesseract-core.wasm'
-    //     ),
-    // });
-    // Use CDNs instead of local paths for Vercel compatibility
-    const worker = await Tesseract.createWorker('eng', 1, {
-      logger: m => console.log(m),
-      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-      corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm',
-    });
-    // const worker = await Tesseract.createWorker('eng', undefined, {
-    //   logger: m => console.log(m),
-    //   corePath: path.resolve(
-    //     __dirname,
-    //      '../node_modules/tesseract.js-core/tesseract-core.wasm'
-    //     ),
-    // })
-    await worker.setParameters({
+    try {
+      const processed = await this.preprocessImage(imageBuffer);
+      const worker = await Tesseract.createWorker('eng', 1,{
+        langPath: path.resolve(__dirname, '../node_modules/tesseract.js-core'),
+      });
+      await worker.load();
+      await worker.setParameters({
       tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
     });
-    
-    await worker.reinitialize('eng');
-    await worker.recognize(processed);
-    try {
-      const {
-        data: { text },
-      } = await worker.recognize(imageBuffer);
-
-      return text;
-    } finally {
+      await worker.reinitialize('eng');
+      const { data } = await worker.recognize(processed);
       await worker.terminate();
+      return data.text;
+    } catch (err) {
+      console.error('OCR failed:', err);
+      throw new InternalServerErrorException('OCR failed');
     }
+    
+
+    // const processed = await this.preprocessImage(imageBuffer);
+    // // Use CDNs instead of local paths for Vercel compatibility
+    // const worker = await Tesseract.createWorker('eng', 1, {
+    //   logger: m => console.log(m),
+    //   // workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+    //   corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm',
+    // });
+    // await worker.setParameters({
+    //   tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,
+    // });
+    
+    // await worker.reinitialize('eng');
+    // await worker.recognize(processed);
+    // try {
+    //   const {
+    //     data: { text },
+    //   } = await worker.recognize(imageBuffer);
+
+    //   return text;
+    // } finally {
+    //   await worker.terminate();
+    // }
   }
 
   // GEMINI AI PROCESSING
