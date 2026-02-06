@@ -6,8 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "cd backend && npm install && npx nest build",
-    "start": "cd backend && node dist/main.js",
+    "build": "npm install && npx nest build",
+    "start": "node dist/main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "postinstall": "npx prisma generate",
     "start:dev": "nest start --watch",
