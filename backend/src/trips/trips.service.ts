@@ -5,16 +5,38 @@ import { PrismaService } from '../prisma/prisma.service';
 export class TripsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createTrip(userId: string, tripName: string) {
+  async createTrip(authUser: any, tripName: string) {
+    const userId = authUser.id;      // works for Google + email
+    const email = authUser.email;
+  
+    if (!userId) {
+      throw new Error('Authenticated user missing id');
+    }
+
+    let user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+  
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          id: userId,
+          email,
+          name: authUser.user_metadata?.full_name || authUser.email,
+        },
+      });
+    }
+  
+    // now create the trip safely
     return this.prisma.trip.create({
       data: {
         tripName,
-        createdBy: userId,
+        createdBy: user.id,
         members: {
-          create: [{ userId }],
+          create: [{ userId: user.id }],
         },
       },
-    })
+    });
   }
 
   async getMyTrips(userId: string) {

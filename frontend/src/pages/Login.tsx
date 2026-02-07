@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
+import { SignInWithGoogle } from './SignInWithGoogle'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -41,6 +42,9 @@ export default function LoginPage() {
       <button onClick={login}>Login</button>
 
       {error && <p>{error}</p>}
+
+      <p>Or Sign in with Google</p>
+      <SignInWithGoogle />
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Post, Req, UseGuards, Param, Put, Patch, Delete } from '@nestjs/common';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
-import { UpdateTripDto } from './dto/update-trip.dtp';
+import { UpdateTripDto } from './dto/update-trip.dto';
 import { AddTripMemberDto } from './dto/add-trip-member.dto';
-import { GetUser, SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { GetUser } from '../auth/get-user.decorator';
 
 @Controller('trips')
 @UseGuards(SupabaseAuthGuard)
@@ -17,7 +18,7 @@ export class TripsController {
 
   @Post()
   createTrip(@Req() req, @Body() dto: CreateTripDto ) {
-    return this.tripsService.createTrip(req.user.id, dto.tripName)
+    return this.tripsService.createTrip(req.user, dto.tripName)
   }
 
   @Patch(':id')

@@ -1,5 +1,6 @@
 import { Body, Controller, Put, Post, Req, UseGuards, Param, Delete, Get, NotFoundException } from '@nestjs/common';
-import { SupabaseAuthGuard, GetUser } from '../auth/supabase-auth.guard';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { GetUser } from '../auth/get-user.decorator';
 import { BillsService } from './bills.service';
 import { ConfirmBillDto } from './dto/confirm-bill.dto';
 

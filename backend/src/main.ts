@@ -9,6 +9,7 @@ const server = express();
 async function bootstrap() {
   const app = await NestFactory.create(
     AppModule,
+    // for prod
     new ExpressAdapter(server),
   );
 
@@ -19,6 +20,10 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept, Authorization',
   });
 
+  //for dev
+  // await app.listen(3000);
+
+  //for prod
   await app.init();
 
   const port = process.env.PORT || 3000;
