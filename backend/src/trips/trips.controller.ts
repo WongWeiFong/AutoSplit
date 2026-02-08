@@ -56,8 +56,13 @@ export class TripsController {
   }
 
   @Post(':tripId/members')
-  addTripMember(@Param('tripId') tripId: string, @Body() dto: AddTripMemberDto) {
-    return this.tripsService.addMember(tripId, dto.userId)
+  addTripMember(
+    @Param('tripId') tripId: string, 
+    @Body('email') email: string) {
+    return this.tripsService.addMemberByEmail(
+      tripId, 
+      email
+    )
   }
   
   @Get(':tripId/balances')

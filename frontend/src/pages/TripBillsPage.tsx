@@ -26,6 +26,7 @@ export default function TripBillsPage() {
   const [loading, setLoading] = useState(true);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [tripMembers, setTripMembers] = useState<TripMember[]>([]);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
 
   const fetchData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -53,17 +54,30 @@ export default function TripBillsPage() {
     fetchData();
   };
 
+  const handleAddMember = async (email: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    await fetch(`${API_URL}/trips/${tripId}/members`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ email })
+    });
+  };
+
   useEffect(() => { fetchData(); }, [tripId]);
 
   return (
     <div style={{ padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Trip Bills</h1>
+        <input type="email" placeholder="Add Member by Email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} />
+        <button onClick={() => handleAddMember(newMemberEmail)}>Add Member</button>
         <button 
           onClick={() => navigate(`/upload/${tripId}`)}
           style={{ padding: '10px 20px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px' }}
         >
-          + Upload New Receipt
+          + Upload New Bill
         </button>
       </div>
 

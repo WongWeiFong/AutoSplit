@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -131,12 +131,38 @@ export class TripsService {
     })
   }
 
-
-  async addMember(tripId: string, userId: string) {
+  async addMemberByEmail(tripId: string, email: string) {
+    // 1. find user
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+  
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+  
+    // 2. prevent duplicates
+    const existing = await this.prisma.tripMember.findUnique({
+      where: {
+        tripId_userId: {
+          tripId,
+          userId: user.id,
+        },
+      },
+    });
+  
+    if (existing) {
+      throw new ForbiddenException('User already in trip');
+    }
+  
+    // 3. create membership
     return this.prisma.tripMember.create({
-      data: { tripId, userId },
-    })
-  }
+      data: {
+        tripId,
+        userId: user.id,
+      },
+    });
+  }  
 
   async getTripsForUser(userId: string) {
     return this.prisma.trip.findMany({
