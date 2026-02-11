@@ -3,6 +3,7 @@ import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { AddTripMemberDto } from './dto/add-trip-member.dto';
+import { InviteMemberDto } from './dto/invite-member.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { GetUser } from '../auth/get-user.decorator';
 
@@ -37,11 +38,6 @@ export class TripsController {
     return this.tripsService.deleteTrip(userId, tripId)
   }
 
-  // @Put(':tripId')
-  // updateTrip(@Param('tripId') tripId: string, @Body() dto: UpdateTripDto) {
-  //   return this.tripsService.updateTrip(tripId, dto.tripName)
-  // }
-
   @Get(':tripId/bills')
   getTripBills(
     @GetUser('id') userId: string,
@@ -53,6 +49,19 @@ export class TripsController {
   @Get(':tripId/members')
   getTripMembers(@Param('tripId') tripId: string) {
     return this.tripsService.getTripMembers(tripId)
+  }
+
+  @Post(':tripId/invite')
+  inviteMember(
+    @Param('tripId') tripId: string,
+    @Req() req,
+    @Body() dto: InviteMemberDto,
+  ) {
+    return this.tripsService.inviteMember(
+      tripId,
+      req.user.id,
+      dto.email,
+    );
   }
 
   @Post(':tripId/members')

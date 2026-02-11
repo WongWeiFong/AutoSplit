@@ -1,9 +1,14 @@
 import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { randomUUID } from 'crypto';
+import { MailService } from '../email/email.service';
+
 
 @Injectable()
 export class TripsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService, 
+    private readonly mailService: MailService) {}
 
   async createTrip(authUser: any, tripName: string) {
     const userId = authUser.id;      // works for Google + email
@@ -163,6 +168,69 @@ export class TripsService {
       },
     });
   }  
+
+  async inviteMember(
+    tripId: string,
+    inviterId: string,
+    email: string,
+  ) {
+    // Only owner can invite
+    const trip = await this.prisma.trip.findUnique({
+      where: { id: tripId },
+    });
+  
+    if (!trip || trip.createdBy !== inviterId) {
+      throw new ForbiddenException('Only owner can invite members');
+    }
+  
+    const token = randomUUID();
+  
+    const invite = await this.prisma.tripInvite.create({
+      data: {
+        tripId,
+        email,
+        token,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24h
+      },
+    });
+  
+    const inviteLink = `${process.env.FRONTEND_URL}/invite/${token}`;
+  
+    await this.mailService.sendInvite(email, inviteLink);
+  
+    return { success: true };
+  }
+
+  async removeMember(tripId: string, requesterId: string, targetUserId: string) {
+    const trip = await this.prisma.trip.findUnique({
+      where: { id: tripId },
+    });
+  
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+  
+    if (trip.createdBy !== requesterId) {
+      throw new ForbiddenException('Only owner can manage members');
+    }
+  
+    if (trip.createdBy === targetUserId) {
+      throw new ForbiddenException('Owner cannot be removed');
+    }
+  
+    return this.prisma.tripMember.update({
+      where: {
+        tripId_userId: {
+          tripId,
+          userId: targetUserId,
+        },
+      },
+      data: {
+        leftAt: new Date(), // soft remove
+      },
+    });
+  }
+  
 
   async getTripsForUser(userId: string) {
     return this.prisma.trip.findMany({

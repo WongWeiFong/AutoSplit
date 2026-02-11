@@ -8,6 +8,8 @@ import TripsPage from "./pages/TripsPage";
 import TripBillsPage from "./pages/TripBillsPage";
 import BillEditPage from "./pages/BillEditPage";
 import AuthCallback from "./auth/AuthCallBack";
+import AcceptInvite from "./pages/AcceptInvite";
+import TripMembersPage from "./pages/TripMembersPage";
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
         <Route path="/trips" element={ <RequireAuth> <TripsPage /> </RequireAuth> } />
         <Route path="/trips/:tripId" element={<RequireAuth><TripBillsPage /></RequireAuth>} />
         <Route path="/bills/:billId/edit" element={<RequireAuth><BillEditPage /></RequireAuth>} />
+        <Route path="/invite/:token" element={<AcceptInvite />} />
+        <Route path="/trips/:tripId/members" element={<RequireAuth><TripMembersPage /></RequireAuth>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
       </Routes>
