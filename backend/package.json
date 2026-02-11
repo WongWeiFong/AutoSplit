@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "postinstall": "npx prisma generate",
-    "build": "npx nest build",
+    "build": "npx prisma generate && npx nest build",
     "start": "node dist/src/main.js",
     "start:prod": "node dist/src/main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -52,6 +52,7 @@
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^7.0.9",
     "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^8.3.4",
