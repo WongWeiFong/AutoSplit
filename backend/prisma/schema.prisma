@@ -40,7 +40,7 @@ model Bill {
 
   createdBy    User          @relation("UserBills", fields: [createdById], references: [id])
   paidBy       User          @relation("UserPaidBills", fields: [paidById], references: [id])
-  trip         Trip          @relation(fields: [tripId], references: [id])
+  trip         Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
   items        BillItem[]
   participants Participant[]
   receipt      Receipt?
@@ -61,7 +61,7 @@ model BillItem {
   totalPrice   Decimal @map("total_price")
   description  String? @map("description")
 
-  bill   Bill        @relation(fields: [billId], references: [id])
+  bill   Bill        @relation(fields: [billId], references: [id], onDelete: Cascade)
   splits BillSplit[]
 
   @@map("bill_items")
@@ -73,7 +73,7 @@ model Participant {
   userId      String @map("user_id")
   displayName String @map("display_name")
 
-  bill Bill @relation(fields: [billId], references: [id])
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
 
   @@unique([billId, userId])
   @@map("participants")
@@ -86,8 +86,8 @@ model BillSplit {
   userId     String  @map("user_id")
   amount     Decimal
 
-  bill Bill     @relation(fields: [billId], references: [id])
-  item BillItem @relation(fields: [billItemId], references: [id])
+  bill Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  item BillItem @relation(fields: [billItemId], references: [id], onDelete: Cascade)
   user User     @relation(fields: [userId], references: [id])
 
   @@unique([billId, billItemId, userId])
@@ -119,7 +119,7 @@ model TripInvite {
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
 
-  trip Trip @relation(fields: [tripId], references: [id])
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
   @@map("trip_invite")
 }
 
@@ -129,7 +129,7 @@ model TripMember {
   userId String @map("user_id")
   leftAt DateTime? @map("left_at")
 
-  trip Trip @relation(fields: [tripId], references: [id])
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
 
   @@unique([tripId, userId])
@@ -144,7 +144,7 @@ model Receipt {
   aiParsedJson Json?    @map("ai_parsed_json")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  bill Bill @relation(fields: [billId], references: [id])
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
 
   @@map("receipts")
 }

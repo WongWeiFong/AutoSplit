@@ -12,11 +12,6 @@ import { GetUser } from '../auth/get-user.decorator';
 export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
    
-  @Get()
-  getMyTrips(@GetUser('id') userId: string) {
-    return this.tripsService.getMyTrips(userId)
-  }
-
   @Post()
   createTrip(@Req() req, @Body() dto: CreateTripDto ) {
     return this.tripsService.createTrip(req.user, dto.tripName)
@@ -32,18 +27,18 @@ export class TripsController {
 
   @Patch(':id')
   updateTrip(
-    @GetUser('id') userId: string,
     @Param('id') tripId: string,
+    @GetUser('id') userId: string,
     @Body() dto: UpdateTripDto // Use DTO here
   ) {
-    return this.tripsService.updateTrip(userId, tripId, dto.tripName);
+    return this.tripsService.updateTrip(tripId, userId, dto.tripName);
   }
 
   @Delete(':id')
   deleteTrip(
-    @GetUser('id') userId: string,
-    @Param('id') tripId: string) {
-    return this.tripsService.deleteTrip(userId, tripId)
+    @Param('id') tripId: string,
+    @GetUser('id') userId: string) {
+    return this.tripsService.deleteTrip(tripId, userId)
   }
 
   @Get(':tripId/bills')

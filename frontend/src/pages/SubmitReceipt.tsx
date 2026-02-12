@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { v4 as uuidv4 } from 'uuid'
 import { useParams, useNavigate } from 'react-router-dom'
+import { v4 } from 'uuid'
+
 const API_URL = import.meta.env.VITE_BACKEND_URL
+
 interface ParsedData {
   title: string | null
   merchantName: string | null
@@ -54,17 +57,17 @@ export default function SubmitReceiptPage() {
   const [isEditingSummary, setIsEditingSummary] = useState(false)
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
-  
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null
     setFile(selectedFile)
-    
+
     if (selectedFile) {
       setPreviewUrl(URL.createObjectURL(selectedFile))
     } else {
       setPreviewUrl(null)
     }
-    
+
     // Clear previous data when new file is selected
     setResponseData(null)
     setEditedData(null)
@@ -109,8 +112,7 @@ export default function SubmitReceiptPage() {
           ...item,
           tempItemId: uuidv4()
         }))
-        // Deep clone for editing
-        // setEditedData(JSON.parse(JSON.stringify(data.parsedData)))
+
         setEditedData({
           ...data.parsedData,
           items: itemsWithIds
@@ -129,15 +131,15 @@ export default function SubmitReceiptPage() {
   const fetchUsers = async () => {
     if (users.length > 0) return
     setLoadingUsers(true)
-    
+
     const { data: { session } } = await supabase.auth.getSession()
-    
+
     if (!session) {
       alert('Please login first')
       setLoadingUsers(false)
       return
     }
-  
+
     try {
       const response = await fetch(`${API_URL}/trips/${tripId}/members`, {
         method: 'GET',
@@ -145,11 +147,10 @@ export default function SubmitReceiptPage() {
           Authorization: `Bearer ${session.access_token}`,
         },
       })
-  
+
       if (response.ok) {
         const data = await response.json()
         setUsers(data.map((m: any) => m.user));
-        // setUsers(data)
       } else {
         alert('Failed to fetch trip members')
       }
@@ -157,7 +158,7 @@ export default function SubmitReceiptPage() {
       console.error('Error fetching trip members:', error)
       alert('Failed to fetch trip members')
     }
-  
+
     setLoadingUsers(false)
   }
 
@@ -187,49 +188,41 @@ export default function SubmitReceiptPage() {
     if (!editedData || !confirm('Remove this item?')) return;
     const newItems = editedData!.items.filter((_, i) => i !== index);
     const results = recalculateItemAndBill(newItems, editedData.taxPercentage, editedData.rounding);
-  setEditedData({ ...editedData, ...results });
-  setSelectedItemIndex(null);
-};
-
-  // const updateItem = (index: number, field: keyof ParsedData['items'][0], value: string | number) => {
-  //   if (editedData) {
-  //     const newItems = [...editedData.items]
-  //     newItems[index] = { ...newItems[index], [field]: value }
-  //     setEditedData({ ...editedData, items: newItems })
-  //   }
-  // }
+    setEditedData({ ...editedData, ...results });
+    setSelectedItemIndex(null);
+  };
 
   const updateItem = (index: number, field: string, value: string | number) => {
     if (!editedData) return;
-  
+
     const newItems = [...editedData.items];
     newItems[index] = { ...newItems[index], [field]: value };
-  
+
     const results = recalculateItemAndBill(newItems, editedData.taxPercentage, editedData.rounding);
 
-  setEditedData({
-    ...editedData,
-    ...results
-  });
-};
+    setEditedData({
+      ...editedData,
+      ...results
+    });
+  };
 
   const toggleItemParticipant = (itemIndex: number, userId: string) => {
     const currentSplits = itemSplits.get(itemIndex) || []
     const existingIndex = currentSplits.findIndex(s => s.userId === userId)
-    
+
     let newSplits: ItemSplit[]
     if (existingIndex >= 0) {
       newSplits = currentSplits.filter(s => s.userId !== userId)
     } else {
       newSplits = [...currentSplits, { userId: userId, amount: 0 }]
     }
-    
+
     setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
   }
 
   const updateSplitAmount = (itemIndex: number, userId: string, amount: number) => {
     const currentSplits = itemSplits.get(itemIndex) || []
-    const newSplits = currentSplits.map(s => 
+    const newSplits = currentSplits.map(s =>
       s.userId === userId ? { ...s, amount } : s
     )
     setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
@@ -237,20 +230,20 @@ export default function SubmitReceiptPage() {
 
   const splitEvenly = (itemIndex: number) => {
     if (!editedData) return
-    
+
     const item = editedData.items[itemIndex]
     const currentSplits = itemSplits.get(itemIndex) || []
-    
+
     if (currentSplits.length === 0) return
-    
+
     const amountPerPerson = Number((item.totalPrice / currentSplits.length).toFixed(2))
     const newSplits = currentSplits.map((s, i) => ({
       ...s,
-      amount: i === currentSplits.length - 1 
+      amount: i === currentSplits.length - 1
         ? Number((item.totalPrice - amountPerPerson * (currentSplits.length - 1)).toFixed(2))
         : amountPerPerson
     }))
-    
+
     setItemSplits(new Map(itemSplits.set(itemIndex, newSplits)))
   }
 
@@ -270,36 +263,6 @@ export default function SubmitReceiptPage() {
     setIsEditingSummary(true)
   }
 
-  // const recalculateBill = (currentData: ParsedData, newRate: number) => {
-  //   let totalSubtotal = 0;
-  //   let totalTaxAmount = 0;
-  
-  //   //calculate base price and add tax
-  //   const updatedItems = currentData.items.map(item => {
-  //     const basePrice = (item.quantity * item.unitPrice) - item.discount;
-  //     const itemTax = basePrice * (newRate / 100);
-  //     const itemTotalWithTax = basePrice + itemTax;
-  
-  //     totalSubtotal += basePrice;
-  //     totalTaxAmount += itemTax;
-  
-  //     return {
-  //       ...item,
-  //       totalPrice: Number(itemTotalWithTax.toFixed(2))
-  //     };
-  //   });
-  
-  //   //update bill data
-  //   return {
-  //     ...currentData,
-  //     items: updatedItems,
-  //     taxPercentage: newRate,
-  //     subtotal: Number(totalSubtotal.toFixed(2)),
-  //     tax: Number(totalTaxAmount.toFixed(2)),
-  //     totalAmount: Number((totalSubtotal + totalTaxAmount + currentData.rounding).toFixed(2))
-  //   };
-  // };
-
   const recalculateItemAndBill = (
     items: any[],
     taxRate: number,
@@ -308,7 +271,7 @@ export default function SubmitReceiptPage() {
     let billSubtotal = 0;
     let billTotalDiscount = 0;
     let billTotalTax = 0;
-  
+
     const updatedItems = items.map(item => {
       // 1. Calculate Item Subtotal (Qty * Price)
       const itemSubtotal = (item.quantity * item.unitPrice);
@@ -318,18 +281,18 @@ export default function SubmitReceiptPage() {
       const itemTax = itemTaxableAmount * (taxRate / 100);
       // 4. Calculate Item Total Price
       const itemTotalPrice = itemTaxableAmount + itemTax;
-  
+
       billSubtotal += itemSubtotal;
       billTotalDiscount += item.discount;
       billTotalTax += itemTax;
-  
+
       return {
         ...item,
         tax: Number(itemTax.toFixed(2)),
         totalPrice: Number(itemTotalPrice.toFixed(2))
       };
     });
-  
+
     return {
       items: updatedItems,
       subtotal: Number(billSubtotal.toFixed(2)),
@@ -341,14 +304,14 @@ export default function SubmitReceiptPage() {
 
   const handleConfirm = async () => {
     if (!responseData || !editedData) return
-  
+
     const { data: { session } } = await supabase.auth.getSession()
-  
+
     if (!session) {
       alert('Please login first')
       return
     }
-  
+
     // Collect all unique participants from splits
     const userIds = new Set<string>()
     itemSplits.forEach(splits => {
@@ -377,7 +340,7 @@ export default function SubmitReceiptPage() {
     })
 
     // Build splits array
-    const splits: {tempItemId: string; itemName: string; userId: string; amount: number }[] = []
+    const splits: { tempItemId: string; itemName: string; userId: string; amount: number }[] = []
     editedData.items.forEach((item, itemIndex) => {
       const itemSplitList = itemSplits.get(itemIndex) || []
       itemSplitList.forEach(split => {
@@ -406,7 +369,7 @@ export default function SubmitReceiptPage() {
       participants,
       splits,
     }
-  
+
     const res = await fetch(
       `${API_URL}/bills/${responseData.billId}/confirm`,
       {
@@ -418,7 +381,7 @@ export default function SubmitReceiptPage() {
         body: JSON.stringify(payload),
       }
     )
-  
+
     if (res.ok) {
       alert('Bill saved successfully!');
       navigate(`/trips/${tripId}`);
@@ -428,80 +391,107 @@ export default function SubmitReceiptPage() {
       console.error('Error:', error)
       alert('Failed to save bill')
     }
-    
+
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-      <h2>Submit Receipt</h2>
-      
+    <div className="container" style={{ maxWidth: '1600px', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div className="flex-between" style={{ marginBottom: '1rem' }}>
+        <h2>Submit Receipt</h2>
+        {editedData && (
+          <button className="btn-primary" onClick={handleConfirm}>
+            Confirm & Save Bill
+          </button>
+        )}
+      </div>
+
       {/* File Upload Form */}
-      <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          style={{ marginRight: '10px' }}
-        />
-        <button disabled={loading || !file}>
-          {loading ? 'Processing...' : 'Upload & Process'}
-        </button>
-      </form>
+      {!editedData && (
+        <div className="card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '3rem' }}>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ padding: '2rem', border: '2px dashed var(--border)', borderRadius: 'var(--radius-lg)' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Upload your receipt image to get started</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ width: 'auto' }}
+                />
+              </div>
+            </div>
+            <button className="btn-primary" disabled={loading || !file} style={{ width: '100%' }}>
+              {loading ? 'Processing Receipt...' : 'Upload & Process'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Main Content - 3 Column Layout */}
       {previewUrl && editedData && (
-        <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
-          
-          {/* Left: Image Preview */}
-          <div style={{ flex: '0 0 300px' }}>
-            <h3>Receipt Image</h3>
-            <div style={{
-              width: '300px',
-              height: '450px',
-              border: '2px solid #ccc',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              backgroundColor: '#f5f5f5',
-            }}>
-              <img
-                src={previewUrl}
-                alt="Receipt preview"
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
+        <div className="grid-3-col" style={{ flex: 1, minHeight: 0 }}>
+
+          {/* Left: Image Preview & Summary */}
+          <div className="scroll-y" style={{ paddingRight: '1rem' }}>
+            <div className="card" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Receipt Image</h3>
+              <div style={{
+                height: '400px',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                backgroundColor: '#f5f5f5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <img
+                  src={previewUrl}
+                  alt="Receipt preview"
+                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                />
+              </div>
             </div>
 
             {/* Summary Section */}
-            <div onClick={handleSelectSummary} style={{ cursor: 'pointer', marginTop: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-              <h4 style={{ marginTop: 0 }}>Bill Summary</h4>
-              <div style={{ fontSize: '0.9em' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>Subtotal:</span>
+            <div
+              className={`card clickable ${isEditingSummary ? 'ring-2 ring-primary' : ''}`}
+              onClick={handleSelectSummary}
+              style={{
+                borderColor: isEditingSummary ? 'var(--primary)' : 'var(--border)',
+                backgroundColor: isEditingSummary ? 'var(--primary-light)' : 'var(--bg-surface)'
+              }}
+            >
+              <h4 style={{ marginBottom: '1rem' }}>Bill Summary</h4>
+              <div style={{ fontSize: '0.95rem' }}>
+                <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Subtotal:</span>
                   <span>${editedData.subtotal?.toFixed(2) || '0.00'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>Tax: {editedData.taxPercentage?.toFixed(2) || '0.00'}%</span>
+                <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Tax ({editedData.taxPercentage?.toFixed(2)}%):</span>
                   <span>${editedData.tax?.toFixed(2) || '0.00'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>Discount:</span>
+                <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Discount:</span>
                   <span>-${editedData.totalDiscount?.toFixed(2) || '0.00'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span>Rounding:</span>
+                <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Rounding:</span>
                   <span>${editedData.rounding?.toFixed(2) || '0.00'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #ccc', paddingTop: '5px', marginTop: '5px' }}>
+                <div className="flex-between" style={{ fontWeight: 'bold', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.5rem', fontSize: '1.1rem' }}>
                   <span>Total:</span>
-                  <span>${editedData.totalAmount?.toFixed(2) || '0.00'}</span>
+                  <span style={{ color: 'var(--primary)' }}>${editedData.totalAmount?.toFixed(2) || '0.00'}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Middle: Items List */}
-          <div style={{ flex: '0 0 300px', maxHeight: '650px', overflowY: 'auto' }}>
-            <div style={{ margin: '0px 10px' }}>
-              <label>Who paid for this bill?</label>
+          <div className="scroll-y" style={{ paddingRight: '1rem' }}>
+            <div className="card" style={{ marginBottom: '1rem' }}>
+              <label>Payer</label>
               <select value={paidById || ''} onChange={(e) => setPaidById(e.target.value)}>
                 <option value="">Select Payer</option>
                 {users.map(user => (
@@ -509,262 +499,200 @@ export default function SubmitReceiptPage() {
                 ))}
               </select>
             </div>
-            <h3>Items ({editedData.items.length})</h3>
-            {editedData.items.map((item, index) => {
-              const splits = itemSplits.get(index) || []
-              const totalSplit = getTotalSplitAmount(index)
-              const isFullyAssigned = Math.abs(totalSplit - item.totalPrice) < 0.01
-              
-              return (
-                <div
-                  key={index}
-                  onClick={() => handleSelectItem(index)}
-                  style={{
-                    padding: '12px',
-                    marginBottom: '8px',
-                    borderRadius: '6px',
-                    border: selectedItemIndex === index 
-                      ? '2px solid #2196F3' 
-                      : '1px solid #ddd',
-                    backgroundColor: selectedItemIndex === index 
-                      ? '#e3f2fd' 
-                      : isFullyAssigned ? '#e8f5e9' : 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                    {item.quantity}x {item.name}
-                  </div>
-                  <div style={{ fontSize: '0.9em', color: '#666' }}>
-                    ${item.totalPrice.toFixed(2)}
-                  </div>
-                  {splits.length > 0 && (
-                    <div style={{ 
-                      fontSize: '0.8em', 
-                      marginTop: '4px',
-                      color: isFullyAssigned ? 'green' : 'orange'
-                    }}>
-                      {splits.length} participant(s) • ${totalSplit.toFixed(2)} assigned
-                      {!isFullyAssigned && ` ($${(item.totalPrice - totalSplit).toFixed(2)} remaining)`}
+
+            <div className="flex-between" style={{ marginBottom: '1rem' }}>
+              <h3>Items ({editedData.items.length})</h3>
+              <button className="btn-secondary btn-sm" onClick={addNewItem}>+ Add Custom Item</button>
+
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {editedData.items.map((item, index) => {
+                const splits = itemSplits.get(index) || []
+                const totalSplit = getTotalSplitAmount(index)
+                const isFullyAssigned = Math.abs(totalSplit - item.totalPrice) < 0.01
+                const isSelected = selectedItemIndex === index;
+
+                return (
+                  <div
+                    key={index}
+                    onClick={() => handleSelectItem(index)}
+                    className={`card clickable ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                    style={{
+                      padding: '1rem',
+                      border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      backgroundColor: isSelected ? 'var(--primary-light)' : (isFullyAssigned ? 'var(--secondary-light)' : 'var(--bg-surface)'),
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
+                      <div style={{ fontWeight: '600' }}>
+                        {item.quantity}x {item.name}
+                      </div>
+                      <div style={{ marginLeft: '1rem' }}>${item.totalPrice.toFixed(2)}</div>
                     </div>
-                  )}
-                </div>
-              )
-            })}
-            <button 
+
+                    {splits.length > 0 ? (
+                      <div style={{ fontSize: '0.85rem', color: isFullyAssigned ? 'var(--secondary-hover)' : 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span className={`badge ${isFullyAssigned ? 'badge-success' : 'badge-warning'}`}>
+                          {splits.length} person(s)
+                        </span>
+                        <span>${totalSplit.toFixed(2)} assigned</span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                        No one assigned
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <button
               onClick={addNewItem}
-              style={{ width: '100%', padding: '10px', marginTop: '10px', border: '2px dashed #ccc', background: 'transparent', cursor: 'pointer' }}
+              className="btn-outline"
+              style={{ width: '100%', marginTop: '1rem', borderStyle: 'dashed' }}
             >
               + Add New Item
             </button>
           </div>
 
           {/* Right: Item Detail Panel */}
-          <div style={{ flex: '1', minWidth: '400px' }}>
-          {isEditingSummary ? (
-            <div style={{ padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px', border: '1px solid #ddd' }}>
-              <h3>Edit Bill Summary</h3>
-              <div style={{ display: 'grid', gap: '12px' }}>
-                <div>
-                  <label style={{ fontWeight: 'bold' }}>Bill Title:</label>
-                  <input 
-                    type="text" 
-                    value={editedData.title || ''} 
-                    onChange={(e) => setEditedData({...editedData, title: e.target.value})}
-                    placeholder="e.g., Dinner at McDonald's"
-                    style={{ width: '100%', padding: '8px' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontWeight: 'bold' }}>Merchant Name:</label>
-                  <input 
-                    type="text" 
-                    value={editedData.merchantName || ''} 
-                    onChange={(e) => setEditedData({...editedData, merchantName: e.target.value})}
-                    style={{ width: '100%', padding: '8px' }}
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div>
-                    <label>Subtotal:</label>
-                    <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({...editedData, subtotal: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
-                  </div>
-                  <div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <label>Tax:</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <input 
-                      type="number" 
-                      value={editedData.taxPercentage || 0} 
-                      onChange={(e) => {
-                        const newRate = parseFloat(e.target.value) || 0;
-                        const results = recalculateItemAndBill(editedData.items, newRate, editedData.rounding);
-                        setEditedData({
-                          ...editedData,
-                          taxPercentage: newRate,
-                          ...results
-                        });
-                      }} 
-                      style={{ width: '100%', padding: '8px' }} 
-                    /> %
-                    <input 
-                      type="number" 
-                      value={editedData.tax} 
-                      onChange={(e) => {
-                        // If user edits amount, calculate the effective rate and apply to items
-                        const newTax = parseFloat(e.target.value) || 0;
-                        const results = recalculateItemAndBill(editedData.items, editedData.taxPercentage, newTax);
-                        setEditedData({
-                          ...editedData,
-                          ...results
-                        });                      }} 
-                      style={{ width: '100%', padding: '8px' }} 
-                    />
-                    </div>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div>
-                    <label>Discount:</label>
-                    <input type="number" value={editedData.totalDiscount} onChange={(e) => setEditedData({...editedData, totalDiscount: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
-                  </div>
-                  <div>
-                    <label>Rounding:</label>
-                    <input type="number" value={editedData.rounding} onChange={(e) => setEditedData({...editedData, rounding: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ fontWeight: 'bold' }}>Total Amount:</label>
-                  <input type="number" value={editedData.totalAmount} onChange={(e) => setEditedData({...editedData, totalAmount: parseFloat(e.target.value) || 0})} style={{ width: '100%', padding: '8px' }} />
-                </div>
-              </div>
-            </div>
-            ) : (selectedItemIndex !== null && editedData.items[selectedItemIndex] ) ? (
-              <div style={{ 
-                padding: '20px', 
-                backgroundColor: '#f9f9f9', 
-                borderRadius: '8px',
-                border: '1px solid #ddd'
-              }}>
-                <h3 style={{ display: 'flex', justifyContent: 'space-between' }}>
-                Item Details
-                <button
-                  onClick={() => removeItem(selectedItemIndex)}
-                  style={{
-                    background: '#ff5252',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.8em',
-                  }}
-                >
-                  Remove Item
-                </button>
-              </h3>
-                
-                {/* Item Fields */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Name:</label>
+          <div className="scroll-y card" style={{ height: 'fit-content' }}>
+            {isEditingSummary ? (
+              <div>
+                <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Edit Bill Summary</h3>
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label>Bill Title</label>
                     <input
                       type="text"
-                      value={editedData.items[selectedItemIndex].name}
-                      onChange={(e) => updateItem(selectedItemIndex, 'name', e.target.value)}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                      value={editedData.title || ''}
+                      onChange={(e) => setEditedData({ ...editedData, title: e.target.value })}
+                      placeholder="e.g., Dinner at McDonald's"
                     />
                   </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div className="form-group">
+                    <label>Merchant Name</label>
+                    <input
+                      type="text"
+                      value={editedData.merchantName || ''}
+                      onChange={(e) => setEditedData({ ...editedData, merchantName: e.target.value })}
+                    />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Quantity:</label>
-                      <input
-                        type="number"
-                        value={editedData.items[selectedItemIndex].quantity}
-                        onChange={(e) => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                      />
+                      <label>Subtotal</label>
+                      <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({ ...editedData, subtotal: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Unit Price:</label>
+                      <label>Tax (%)</label>
                       <input
                         type="number"
-                        step="0.01"
-                        value={editedData.items[selectedItemIndex].unitPrice}
-                        onChange={(e) => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                        value={editedData.taxPercentage || 0}
+                        onChange={(e) => {
+                          const newRate = parseFloat(e.target.value) || 0;
+                          const results = recalculateItemAndBill(editedData.items, newRate, editedData.rounding);
+                          setEditedData({ ...editedData, taxPercentage: newRate, ...results });
+                        }}
                       />
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Tax Amount:</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editedData.items[selectedItemIndex].tax}
-                        onChange={(e) => updateItem(selectedItemIndex, 'tax', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                      />
+                      <label>Discount</label>
+                      <input type="number" value={editedData.totalDiscount} onChange={(e) => setEditedData({ ...editedData, totalDiscount: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Discount:</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editedData.items[selectedItemIndex].discount}
-                        onChange={(e) => updateItem(selectedItemIndex, 'discount', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                      />
+                      <label>Rounding</label>
+                      <input type="number" value={editedData.rounding} onChange={(e) => setEditedData({ ...editedData, rounding: parseFloat(e.target.value) || 0 })} />
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Total Price:</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editedData.items[selectedItemIndex].totalPrice}
-                        onChange={(e) => updateItem(selectedItemIndex, 'totalPrice', parseFloat(e.target.value) || 0)}
-                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                  </div>
-                  
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Description:</label>
-                    <textarea
-                      value={editedData.items[selectedItemIndex].description}
-                      onChange={(e) => updateItem(selectedItemIndex, 'description', e.target.value)}
-                      rows={3}
-                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical', boxSizing: 'border-box' }}
+                    <label style={{ fontWeight: 'bold' }}>Total Amount</label>
+                    <input type="number" value={editedData.totalAmount} onChange={(e) => setEditedData({ ...editedData, totalAmount: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                </div>
+              </div>
+            ) : (selectedItemIndex !== null && editedData.items[selectedItemIndex]) ? (
+              <div>
+                <div className="flex-between" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                  <h3 style={{ margin: 0 }}>Item Details</h3>
+                  <button
+                    className="btn-danger btn-sm"
+                    onClick={() => removeItem(selectedItemIndex)}
+                  >
+                    Remove
+                  </button>
+                </div>
+
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    value={editedData.items[selectedItemIndex].name}
+                    onChange={(e) => updateItem(selectedItemIndex, 'name', e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label>Quantity</label>
+                    <input
+                      type="number"
+                      value={editedData.items[selectedItemIndex].quantity}
+                      onChange={(e) => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
+                    <label>Unit Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editedData.items[selectedItemIndex].unitPrice}
+                      onChange={(e) => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
                     />
                   </div>
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label>Tax Amount</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editedData.items[selectedItemIndex].tax}
+                      onChange={(e) => updateItem(selectedItemIndex, 'tax', parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
+                    <label>Total Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editedData.items[selectedItemIndex].totalPrice}
+                      onChange={(e) => updateItem(selectedItemIndex, 'totalPrice', parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea
+                    value={editedData.items[selectedItemIndex].description}
+                    onChange={(e) => updateItem(selectedItemIndex, 'description', e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
                 {/* Participant Assignment Section */}
-                <div style={{ 
-                  borderTop: '2px solid #ddd', 
-                  paddingTop: '20px',
-                  marginTop: '20px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h4 style={{ margin: 0 }}>Assign Participants</h4>
+                <div style={{ borderTop: '2px solid var(--border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+                  <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ margin: 0 }}>Assign To</h4>
                     <button
                       type="button"
                       onClick={() => splitEvenly(selectedItemIndex)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#FF9800',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.9em'
-                      }}
+                      className="btn-secondary btn-sm"
                     >
                       Split Evenly
                     </button>
@@ -773,156 +701,38 @@ export default function SubmitReceiptPage() {
                   {loadingUsers ? (
                     <p>Loading users...</p>
                   ) : users.length === 0 ? (
-                    <p style={{ color: '#999' }}>No users available</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>No other users in this trip.</p>
                   ) : (
-                    <>
-                      {/* User Selection Grid */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '15px' }}>
-                        {users.map(user => {
-                          const splits = itemSplits.get(selectedItemIndex) || []
-                          const isSelected = splits.some(s => s.userId === user.id)
-                          
-                          return (
-                            <div
-                              key={user.id}
-                              onClick={() => toggleItemParticipant(selectedItemIndex, user.id)}
-                              style={{
-                                padding: '8px 12px',
-                                borderRadius: '20px',
-                                border: isSelected ? '2px solid #4CAF50' : '1px solid #ccc',
-                                backgroundColor: isSelected ? '#e8f5e9' : 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.9em',
-                                transition: 'all 0.2s',
-                              }}
-                            >
-                              {user.name || user.email || user.id.substring(0, 8)}
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {/* Amount Inputs for Selected Participants */}
-                      {(() => {
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {users.map(user => {
                         const splits = itemSplits.get(selectedItemIndex) || []
-                        const totalSplit = getTotalSplitAmount(selectedItemIndex)
-                        const itemTotal = editedData.items[selectedItemIndex].totalPrice
-                        const remaining = itemTotal - totalSplit
-                        
-                        return splits.length > 0 ? (
-                          <div style={{ 
-                            backgroundColor: 'white', 
-                            padding: '15px', 
-                            borderRadius: '6px',
-                            border: '1px solid #ddd'
-                          }}>
-                            <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>
-                              Amount per participant:
-                            </div>
-                            
-                            {splits.map(split => {
-                              const user = users.find(u => u.id === split.userId)
-                              return (
-                                <div 
-                                  key={split.userId}
-                                  style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'space-between',
-                                    marginBottom: '10px',
-                                    padding: '8px',
-                                    backgroundColor: '#f5f5f5',
-                                    borderRadius: '4px'
-                                  }}
-                                >
-                                  <span style={{ flex: 1 }}>
-                                    {user?.name || user?.email || split.userId.substring(0, 8)}
-                                  </span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <span>$</span>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      value={split.amount}
-                                      onChange={(e) => updateSplitAmount(
-                                        selectedItemIndex, 
-                                        split.userId, 
-                                        parseFloat(e.target.value) || 0
-                                      )}
-                                      style={{ 
-                                        width: '80px', 
-                                        padding: '6px', 
-                                        borderRadius: '4px', 
-                                        border: '1px solid #ccc',
-                                        textAlign: 'right'
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              )
-                            })}
-                            
-                            {/* Summary */}
-                            <div style={{ 
-                              borderTop: '1px solid #ddd', 
-                              paddingTop: '10px', 
-                              marginTop: '10px',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              fontSize: '0.9em'
-                            }}>
-                              <span>Item Total: <strong>${itemTotal.toFixed(2)}</strong></span>
-                              <span>Assigned: <strong>${totalSplit.toFixed(2)}</strong></span>
-                              <span style={{ color: Math.abs(remaining) < 0.01 ? 'green' : 'red' }}>
-                                Remaining: <strong>${remaining.toFixed(2)}</strong>
-                              </span>
-                            </div>
+                        const isSelected = splits.some(s => s.userId === user.id)
+
+                        return (
+                          <div
+                            key={user.id}
+                            onClick={() => toggleItemParticipant(selectedItemIndex, user.id)}
+                            className={`clickable badge ${isSelected ? 'badge-success' : 'badge-neutral'}`}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.9rem',
+                              border: isSelected ? '1px solid var(--secondary)' : '1px solid var(--border)',
+                            }}
+                          >
+                            {user.name || user.email || user.id.substring(0, 8)}
                           </div>
-                        ) : (
-                          <p style={{ color: '#999', fontStyle: 'italic' }}>
-                            Click on participants above to assign them to this item
-                          </p>
                         )
-                      })()}
-                    </>
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div style={{ 
-                padding: '40px', 
-                backgroundColor: '#f9f9f9', 
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                textAlign: 'center',
-                color: '#999'
-              }}>
-                <h3>Select an item</h3>
-                <p>Click on an item from the list to view details and assign participants</p>
+              <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4rem' }}>
+                Select an item or the summary to edit details
               </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Confirm Button */}
-      {editedData && responseData && (
-        <div style={{ marginTop: '30px', textAlign: 'center' }}>
-          <button
-            onClick={handleConfirm}
-            style={{
-              padding: '15px 40px',
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '1.1em',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
-          >
-            Confirm & Save Bill
-          </button>
         </div>
       )}
     </div>

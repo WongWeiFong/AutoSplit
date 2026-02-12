@@ -27,6 +27,7 @@ export default function TripMembersPage() {
   const navigate = useNavigate();
 
   const invite = async () => {
+    if (!email.trim()) return;
     setLoading(true);
 
     const token = await getToken();
@@ -92,9 +93,6 @@ export default function TripMembersPage() {
       if (response.ok) {
         const data = await response.json();
         setMembers(data);
-        // setMembers(data.members);
-        // setOwnerId(data.ownerId);
-        // setCurrentUserId(data.currentUserId);
       }
     } catch (error) {
       console.error("Error fetching members:", error);
@@ -138,97 +136,90 @@ export default function TripMembersPage() {
     fetchMembers(tripId!);
   };
 
-  // const sortedMembers = [...members].sort((a, b) => {
-  //   if (a.user.id === ownerId) return -1;
-  //   if (b.user.id === ownerId) return 1;
-  //   return 0;
-  // });
-
   // Find owner
   const ownerMember = members.find(m => m.user.id === ownerId);
   // Filter normal members
   const otherMembers = members.filter(m => m.user.id !== ownerId);
   const isOwner = currentUserId === ownerId;
-  return (
-    <div style={{ padding: 20 }}>
-      <button onClick={() => navigate(-1)} style={{ marginBottom: 20 }}>
-        &larr; Back
-      </button>
-      <h2>Trip Members</h2>
 
-      {loading && <p>Loading...</p>}
+  return (
+    <div className="container" style={{ maxWidth: '800px' }}>
+      <button onClick={() => navigate(-1)} className="btn-ghost" style={{ paddingLeft: 0, marginBottom: '1rem' }}>
+        &larr; Back to Trip
+      </button>
+
+      <div className="flex-between" style={{ marginBottom: '2rem' }}>
+        <h2>Trip Members</h2>
+      </div>
 
       {isOwner && (
-        <div style={{ marginBottom: 20, padding: 15, border: '1px solid #eee', borderRadius: 8 }}>
-          <h3>Invite Member</h3>
-          <div style={{ display: 'flex', gap: 10 }}>
+        <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'var(--bg-surface)' }}>
+          <h3 style={{ marginBottom: '1rem' }}>Invite New Member</h3>
+          <div style={{ display: 'flex', gap: '1rem' }}>
             <input
               type="email"
-              placeholder="Enter email to invite"
+              placeholder="friend@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ padding: 8, flex: 1 }}
+              style={{ flex: 1 }}
             />
-            <button onClick={invite} disabled={loading} style={{ padding: '8px 16px' }}>
-              Send Invite
+            <button className="btn-primary" onClick={invite} disabled={loading}>
+              {loading ? 'Sending...' : 'Send Invite'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Display Owner at the very top */}
-      {ownerMember && (
-        <div style={{ marginBottom: 20, padding: 15, border: '2px solid #ffd700', borderRadius: 8, background: '#fff9c4' }}>
-          <h3 style={{ marginTop: 0 }}>Owner</h3>
-          <div>
-            <strong>{ownerMember.user.name}</strong>
-            <div>{ownerMember.user.email}</div>
-          </div>
-        </div>
-      )}
+      <div className="card">
+        <h3 style={{ marginBottom: '1.5rem' }}>Members List</h3>
 
-      {/* Display other members */}
-      <h3>Members</h3>
-      {otherMembers.length === 0 && <p>No other members yet.</p>}
-      {otherMembers.map((member) => {
-        return (
-          <div
-            key={member.id}
-            style={{
-              border: "1px solid #ccc",
-              padding: 12,
-              marginBottom: 10,
-              borderRadius: 6,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <strong>{member.user.name}</strong>
-              <div>{member.user.email}</div>
-            </div>
-
-            {isOwner && (
-              <div>
-                <button
-                  onClick={() => transferOwnership(member.user.id)}
-                  style={{ marginRight: 10 }}
-                >
-                  Make Owner
-                </button>
-
-                <button
-                  onClick={() => removeMember(member.user.id)}
-                  style={{ color: "red" }}
-                >
-                  Remove
-                </button>
+        {loading && members.length === 0 ? <p>Loading...</p> : (
+          <div className="list-group">
+            {/* Owner */}
+            {ownerMember && (
+              <div className="list-item" style={{ backgroundColor: 'var(--primary-light)' }}>
+                <div>
+                  <div style={{ fontWeight: 'bold' }}>{ownerMember.user.name || 'Unknown Name'} <span className="badge badge-success" style={{ marginLeft: '0.5rem' }}>Owner</span></div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{ownerMember.user.email}</div>
+                </div>
               </div>
             )}
+
+            {/* Other Members */}
+            {otherMembers.length === 0 ? (
+              <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No other members yet.</div>
+            ) : (
+              otherMembers.map((member) => (
+                <div key={member.id} className="list-item">
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{member.user.name || 'Unknown Name'}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{member.user.email}</div>
+                  </div>
+
+                  {isOwner && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className="btn-outline btn-sm"
+                        onClick={() => transferOwnership(member.user.id)}
+                        title="Make Owner"
+                      >
+                        Promote
+                      </button>
+                      <button
+                        className="btn-danger btn-sm"
+                        onClick={() => removeMember(member.user.id)}
+                        title="Remove Member"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }

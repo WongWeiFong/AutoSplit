@@ -65,22 +65,6 @@ export class TripsService {
     return trip;
   }
 
-  async getMyTrips(userId: string) {
-    return this.prisma.trip.findMany({
-      where: {
-        members: {
-          some: { userId }
-        }
-      },
-      select: {
-        id: true,
-        tripName: true,
-        createdAt: true
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-  }
-
   async updateTrip(tripId: string, userId: string, tripName: string) {
     await this.checkOwnership(tripId, userId);
     return this.prisma.trip.update({
@@ -131,6 +115,7 @@ export class TripsService {
       throw new NotFoundException('Trip not found')
     }
     if (trip.createdBy !== userId) {
+      throw new ForbiddenException('You do not have permission to modify this trip');
   }
 }
 
@@ -298,8 +283,14 @@ export class TripsService {
           some: { userId },
         },
       },
-      include: {
-        bills: true,
+      select: {
+        id: true,
+        tripName: true,
+        createdAt: true,
+        createdBy: true,
+        _count: {
+          select: { bills: true }
+        },
         members: {
           include: { user: true },
         },

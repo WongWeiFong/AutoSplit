@@ -16,35 +16,52 @@ export default function LoginPage() {
     })
 
     if (error) {
-        setError(error.message)
+      setError(error.message)
     } else {
-        navigate('/trips')
+      navigate('/trips')
     }
   }
 
   return (
-    <div>
-      <h2>Login</h2>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-app)' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'var(--primary)' }}>AutoSplit</h2>
+        <h3 style={{ textAlign: 'center', marginBottom: '2rem', fontSize: '1.25rem' }}>Welcome Back</h3>
 
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-      />
+        <div className="form-group">
+          <label>Email Address</label>
+          <input
+            placeholder="name@example.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            type="email"
+          />
+        </div>
 
-      <input
-        placeholder="Password"
-        type="password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-      />
+        <div className="form-group">
+          <label>Password</label>
+          <input
+            placeholder="••••••••"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        </div>
 
-      <button onClick={login}>Login</button>
+        {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
 
-      {error && <p>{error}</p>}
+        <button className="btn-primary" onClick={login} style={{ width: '100%', marginBottom: '1rem' }}>
+          Sign In
+        </button>
 
-      <p>Or Sign in with Google</p>
-      <SignInWithGoogle />
+        <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+          <span style={{ padding: '0 10px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>OR</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+        </div>
+
+        <SignInWithGoogle />
+      </div>
     </div>
   )
 }
