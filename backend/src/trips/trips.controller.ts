@@ -22,6 +22,14 @@ export class TripsController {
     return this.tripsService.createTrip(req.user, dto.tripName)
   }
 
+  @Get(':id')
+  async getTrip(
+    @GetUser('id') userId: string,
+    @Param('id') tripId: string
+  ) {
+    return this.tripsService.getTrip(userId, tripId);
+  }
+
   @Patch(':id')
   updateTrip(
     @GetUser('id') userId: string,
@@ -63,6 +71,30 @@ export class TripsController {
       dto.email,
     );
   }
+
+  @Post(':tripId/transfer-ownership')
+  transferOwnership(
+    @Req() req,
+    @Param('tripId') tripId: string,
+    @Body() body: { newOwnerId: string },
+  ) {
+    return this.tripsService.transferOwnership(
+      tripId,
+      req.user.id,
+      body.newOwnerId,
+    );
+  }
+
+
+  @Delete(':tripId/members/:memberId')
+  removeMember(
+    @Req() req,
+    @Param('tripId') tripId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.tripsService.removeMember(tripId, req.user.id, memberId);
+  }
+
 
   @Post(':tripId/members')
   addTripMember(

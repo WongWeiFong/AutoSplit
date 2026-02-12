@@ -71,13 +71,19 @@ export default function TripBillsPage() {
     <div style={{ padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Trip Bills</h1>
-        <input type="email" placeholder="Add Member by Email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} />
-        <button onClick={() => handleAddMember(newMemberEmail)}>Add Member</button>
+        {/* <input type="email" placeholder="Add Member by Email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} />
+        <button onClick={() => handleAddMember(newMemberEmail)}>Add Member</button> */}
         <button 
           onClick={() => navigate(`/upload/${tripId}`)}
           style={{ padding: '10px 20px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px' }}
         >
-          + Upload New Bill
+          Upload New Bill
+        </button>
+        <button 
+          onClick={() => navigate(`/trips/${tripId}/members`)}
+          style={{ padding: '10px 20px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '5px' }}
+        >
+          Members
         </button>
       </div>
 

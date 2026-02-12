@@ -44,6 +44,27 @@ export class TripsService {
     });
   }
 
+  async getTrip(userId: string, tripId: string) {
+    const trip = await this.prisma.trip.findUnique({
+      where: { id: tripId },
+    });
+
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    // Check if user is a member
+    const isMember = await this.prisma.tripMember.findFirst({
+      where: { tripId, userId },
+    });
+
+    if (!isMember) {
+      throw new ForbiddenException('Not a member of this trip');
+    }
+
+    return trip;
+  }
+
   async getMyTrips(userId: string) {
     return this.prisma.trip.findMany({
       where: {
@@ -201,7 +222,7 @@ export class TripsService {
     return { success: true };
   }
 
-  async removeMember(tripId: string, requesterId: string, targetUserId: string) {
+  async removeMember(tripId: string, ownerId: string, memberId: string) {
     const trip = await this.prisma.trip.findUnique({
       where: { id: tripId },
     });
@@ -210,27 +231,65 @@ export class TripsService {
       throw new NotFoundException('Trip not found');
     }
   
-    if (trip.createdBy !== requesterId) {
+    if (trip.createdBy !== ownerId) {
       throw new ForbiddenException('Only owner can manage members');
     }
   
-    if (trip.createdBy === targetUserId) {
+    if (trip.createdBy === memberId) {
       throw new ForbiddenException('Owner cannot be removed');
     }
   
-    return this.prisma.tripMember.update({
-      where: {
-        tripId_userId: {
-          tripId,
-          userId: targetUserId,
-        },
-      },
-      data: {
-        leftAt: new Date(), // soft remove
-      },
+    // return this.prisma.tripMember.update({
+    //   where: {
+    //     tripId_userId: {
+    //       tripId,
+    //       userId: targetUserId,
+    //     },
+    //   },
+    //   data: {
+    //     leftAt: new Date(), // soft remove
+    //   },
+    // });
+    const member = await this.prisma.tripMember.findFirst({
+      where: { tripId, userId: memberId },
+    });
+  
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+  
+    return this.prisma.tripMember.delete({
+      where: { id: member.id },
     });
   }
   
+  async transferOwnership(tripId: string, ownerId: string, newOwnerId: string) {
+    const trip = await this.prisma.trip.findUnique({
+      where: { id: tripId },
+    });
+  
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+  
+    if (trip.createdBy !== ownerId) {
+      throw new ForbiddenException('Only owner can transfer ownership');
+    }
+  
+    // Ensure new owner is a member
+    const member = await this.prisma.tripMember.findFirst({
+      where: { tripId, userId: newOwnerId },
+    });
+  
+    if (!member) {
+      throw new ForbiddenException('New owner must be a trip member');
+    }
+  
+    return this.prisma.trip.update({
+      where: { id: tripId },
+      data: { createdBy: newOwnerId },
+    });
+  }
 
   async getTripsForUser(userId: string) {
     return this.prisma.trip.findMany({
