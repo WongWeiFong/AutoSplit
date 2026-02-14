@@ -10,7 +10,7 @@ async function bootstrap() {
   const app = await NestFactory.create(
     AppModule,
     // for prod
-    // new ExpressAdapter(server),
+    new ExpressAdapter(server),
   );
 
   app.enableCors({
@@ -21,14 +21,14 @@ async function bootstrap() {
   });
 
   //for dev
-  await app.listen(3000);
+  // await app.listen(3000);
 
   //for prod
-  // await app.init();
-  // const port = process.env.PORT || 3000;
-  // http.createServer(server).listen(port as number, '0.0.0.0', () => {
-  //   console.log(`🚀 Server running on port ${port}`);
-  // });
+  await app.init();
+  const port = process.env.PORT || 3000;
+  http.createServer(server).listen(port as number, '0.0.0.0', () => {
+    console.log(`🚀 Server running on port ${port}`);
+  });
 }
 
 bootstrap();
