@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import SubmitReceipt from "./pages/SubmitReceipt";
 import Login from "./pages/Login";
+import HomePage from "./pages/HomePage";
 import TripsPage from "./pages/TripsPage";
 import TripBillsPage from "./pages/TripBillsPage";
 import BillEditPage from "./pages/BillEditPage";
@@ -15,7 +16,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<HomePage />}  />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/upload/:tripId" element={<RequireAuth><SubmitReceipt /></RequireAuth>} />
         <Route path="/trips" element={ <RequireAuth> <TripsPage /> </RequireAuth> } />

@@ -1,8 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, UserPlus, Trash2, Crown, Mail, Shield, User } from 'lucide-react';
+import Navbar from '../components/Navbar';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL
+const API_URL = import.meta.env.VITE_BACKEND_URL;
+
 const getToken = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token;
@@ -22,6 +26,7 @@ export default function TripMembersPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [email, setEmail] = useState('');
   const [ownerId, setOwnerId] = useState('');
+  const [tripName, setTripName] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -72,7 +77,8 @@ export default function TripMembersPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setOwnerId(data.createdBy); // Set the owner ID
+        setOwnerId(data.createdBy);
+        setTripName(data.tripName);
       }
     } catch (error) {
       console.error("Error fetching trip details:", error);
@@ -136,90 +142,141 @@ export default function TripMembersPage() {
     fetchMembers(tripId!);
   };
 
-  // Find owner
   const ownerMember = members.find(m => m.user.id === ownerId);
-  // Filter normal members
   const otherMembers = members.filter(m => m.user.id !== ownerId);
   const isOwner = currentUserId === ownerId;
 
   return (
-    <div className="container" style={{ maxWidth: '800px' }}>
-      <button onClick={() => navigate(-1)} className="btn-ghost" style={{ paddingLeft: 0, marginBottom: '1rem' }}>
-        &larr; Back to Trip
-      </button>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
 
-      <div className="flex-between" style={{ marginBottom: '2rem' }}>
-        <h2>Trip Members</h2>
-      </div>
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-      {isOwner && (
-        <div className="card" style={{ marginBottom: '2rem', backgroundColor: 'var(--bg-surface)' }}>
-          <h3 style={{ marginBottom: '1rem' }}>Invite New Member</h3>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <input
-              type="email"
-              placeholder="friend@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button className="btn-primary" onClick={invite} disabled={loading}>
-              {loading ? 'Sending...' : 'Send Invite'}
-            </button>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-sm text-gray-500 hover:text-gray-900 mb-6 group transition-colors"
+        >
+          <ArrowLeft size={16} className="mr-1 group-hover:-translate-x-1 transition-transform" />
+          Back to Trip Details
+        </button>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{tripName || 'Trip'} Members</h2>
+              <p className="text-sm text-gray-500 mt-1">Manage who is part of this trip.</p>
+            </div>
+            <span className="bg-indigo-100 text-indigo-700 text-sm font-medium px-3 py-1 rounded-full">
+              {members.length} Member(s)
+            </span>
           </div>
-        </div>
-      )}
 
-      <div className="card">
-        <h3 style={{ marginBottom: '1.5rem' }}>Members List</h3>
-
-        {loading && members.length === 0 ? <p>Loading...</p> : (
-          <div className="list-group">
-            {/* Owner */}
-            {ownerMember && (
-              <div className="list-item" style={{ backgroundColor: 'var(--primary-light)' }}>
-                <div>
-                  <div style={{ fontWeight: 'bold' }}>{ownerMember.user.name || 'Unknown Name'} <span className="badge badge-success" style={{ marginLeft: '0.5rem' }}>Owner</span></div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{ownerMember.user.email}</div>
+          <div className="p-6">
+            {/* Invite Section */}
+            {isOwner && (
+              <div className="mb-8 p-6 bg-indigo-50 rounded-xl border border-indigo-100">
+                <h3 className="text-indigo-900 font-semibold mb-2 flex items-center gap-2">
+                  <UserPlus size={18} />
+                  Invite New Member
+                </h3>
+                <p className="text-sm text-indigo-700 mb-4">
+                  Send an email invitation to add someone to this trip.
+                </p>
+                <div className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-400">
+                      <Mail size={18} />
+                    </div>
+                    <input
+                      type="email"
+                      placeholder="friend@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 block w-full rounded-lg border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <button
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
+                    onClick={invite}
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending...' : 'Send Invite'}
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Other Members */}
-            {otherMembers.length === 0 ? (
-              <div style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No other members yet.</div>
-            ) : (
-              otherMembers.map((member) => (
-                <div key={member.id} className="list-item">
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{member.user.name || 'Unknown Name'}</div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{member.user.email}</div>
-                  </div>
+            {/* Members List */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Current Members</h3>
 
-                  {isOwner && (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        className="btn-outline btn-sm"
-                        onClick={() => transferOwnership(member.user.id)}
-                        title="Make Owner"
-                      >
-                        Promote
-                      </button>
-                      <button
-                        className="btn-danger btn-sm"
-                        onClick={() => removeMember(member.user.id)}
-                        title="Remove Member"
-                      >
-                        Remove
-                      </button>
+              {loading && members.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">Loading members...</div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {/* Owner */}
+                  {ownerMember && (
+                    <div className="flex items-center justify-between py-4 group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-100 to-yellow-200 border border-yellow-300 flex items-center justify-center text-yellow-700 font-bold shadow-sm">
+                          <Crown size={18} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 flex items-center gap-2">
+                            {ownerMember.user.name || ownerMember.user.email.split('@')[0]}
+                            <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full border border-yellow-200 font-medium">Owner</span>
+                          </div>
+                          <div className="text-sm text-gray-500">{ownerMember.user.email}</div>
+                        </div>
+                      </div>
                     </div>
                   )}
+
+                  {/* Other Members */}
+                  {otherMembers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 italic">No other members yet. Invite someone!</div>
+                  ) : (
+                    otherMembers.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between py-4 group hover:bg-gray-50 rounded-lg px-2 transition-colors -mx-2">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                            {member.user.name ? member.user.name.charAt(0).toUpperCase() : <User size={18} />}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {member.user.name || member.user.email.split('@')[0]}
+                            </div>
+                            <div className="text-sm text-gray-500">{member.user.email}</div>
+                          </div>
+                        </div>
+
+                        {isOwner && (
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              onClick={() => transferOwnership(member.user.id)}
+                              title="Make Owner"
+                            >
+                              <Shield size={18} />
+                            </button>
+                            <button
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              onClick={() => removeMember(member.user.id)}
+                              title="Remove Member"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
-              ))
-            )}
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

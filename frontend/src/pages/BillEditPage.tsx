@@ -1,7 +1,18 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { v4 as uuidv4 } from 'uuid'
 import { useParams, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeft,
+  X,
+  Plus,
+  Check,
+  Trash2,
+  Save,
+  FileText
+} from 'lucide-react'
+import Navbar from '../components/Navbar'
 
 const API_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -57,7 +68,6 @@ export default function BillEditPage() {
   const { billId } = useParams<{ billId: string }>()
   const navigate = useNavigate()
 
-  // 1. Fetch Bill Data and reconstruct state
   useEffect(() => {
     const fetchBill = async () => {
       if (!billId) return;
@@ -79,12 +89,10 @@ export default function BillEditPage() {
 
         const data = await res.json();
 
-        // Reconstruct Preview URL
         if (data.receipt?.imageUrl) {
           setPreviewUrl(data.receipt.imageUrl);
         }
 
-        // Reconstruct Edited Data (handling Decimal strings from DB)
         const mappedEditedData: ParsedData = {
           title: data.title,
           merchantName: data.merchantName,
@@ -100,13 +108,13 @@ export default function BillEditPage() {
             quantity: Number(item.quantity),
             unitPrice: Number(item.unitPrice),
             discount: Number(item.discount),
+            tax: Number(item.tax),
             totalPrice: Number(item.totalPrice),
             description: item.description || '',
           }))
         };
         setEditedData(mappedEditedData);
 
-        // Reconstruct Item Splits Map
         const newSplitsMap = new Map<number, ItemSplit[]>();
         data.items.forEach((item: any, index: number) => {
           const splits = data.splits
@@ -116,17 +124,13 @@ export default function BillEditPage() {
         });
         setItemSplits(newSplitsMap);
 
-        // Set Payer
         setPaidById(data.paidById);
 
-        // Set ResponseData to satisfy handleConfirm check
         setResponseData({
           billId: data.id,
           parsedData: mappedEditedData,
         });
 
-        // After we have the bill data, fetch the trip members
-        // We get the tripId from the bill data itself
         if (data.tripId) {
           fetchUsers(data.tripId, session.access_token);
         }
@@ -180,16 +184,15 @@ export default function BillEditPage() {
 
   const removeItem = (index: number) => {
     if (!editedData || !confirm('Remove this item?')) return;
-    if (!editedData) return;
     const newItems = editedData!.items.filter((_, i) => i !== index);
 
-    // Also need to shift split keys if we remove an item from the middle? 
-    // This logic is a bit tricky with maps based on index. Ideally we should map by ID. 
-    // But for now, we'll just clear the splits for simplicity or rebuild the map.
-    // The previous implementation had complex logic here. Let's simplify:
+    // Re-index splits logic (simplified: clear splits for now as indices shift)
+    // In a real app we'd map by ID, but simplified here as requested
     const newSplits = new Map<number, ItemSplit[]>();
+    // Just carrying over splits that are before the index
     itemSplits.forEach((splits, key) => {
       if (key < index) newSplits.set(key, splits);
+      // shifting subsequent splits
       else if (key > index) newSplits.set(key - 1, splits);
     });
     setItemSplits(newSplits);
@@ -274,8 +277,8 @@ export default function BillEditPage() {
   }
 
   const recalculateItemAndBill = (
-    items: ParsedData['items'],
-    taxRate: number,
+    items: ParsedData['items'], 
+    taxRate: number, 
     rounding: number
   ) => {
     let billSubtotal = 0;
@@ -283,16 +286,10 @@ export default function BillEditPage() {
     let billTotalTax = 0;
 
     const updatedItems = items.map(item => {
-      // 1. Calculate Item Subtotal (Qty * Price - Discount)
       const itemSubtotal = (item.quantity * item.unitPrice) - item.discount;
-
-      // 2. Calculate Item Tax based on the percentage
       const itemTax = itemSubtotal * (taxRate / 100);
-
-      // 3. Calculate Item Total Price
       const itemTotalPrice = itemSubtotal + itemTax;
 
-      // Accumulate Bill Totals
       billSubtotal += (item.quantity * item.unitPrice);
       billTotalDiscount += item.discount;
       billTotalTax += itemTax;
@@ -358,7 +355,7 @@ export default function BillEditPage() {
 
     const payload = {
       paidById: paidById || session.user.id,
-      title: editedData.merchantName || 'Updated Bill',
+      title: editedData.title || 'Updated Bill',
       merchantName: editedData.merchantName,
       bill: {
         subtotal: editedData.subtotal,
@@ -387,7 +384,7 @@ export default function BillEditPage() {
 
     if (res.ok) {
       alert('Bill updated successfully!');
-      navigate(-1); // Go back to previous page
+      navigate(-1);
     } else {
       const error = await res.json()
       console.error('Error:', error)
@@ -396,339 +393,379 @@ export default function BillEditPage() {
   }
 
   if (loading) return (
-    <div className="container flex-center" style={{ height: '100vh' }}>
-      <p>Loading bill data...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
     </div>
   );
 
   if (!editedData) return (
-    <div className="container flex-center" style={{ height: '100vh' }}>
-      <p>Bill not found.</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
+      <h2 className="text-xl font-bold text-gray-900">Bill not found</h2>
+      <button onClick={() => navigate(-1)} className="text-indigo-600 hover:text-indigo-800 font-medium"> Go Back</button>
     </div>
   );
 
   return (
-    <div className="container" style={{ maxWidth: '1600px', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <button onClick={() => navigate(-1)} className="btn-ghost" style={{ width: 'fit-content', marginBottom: '0.5rem', paddingLeft: 0 }}>
-        &larr; Back
-      </button>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
 
-      <div className="flex-between" style={{ marginBottom: '1rem' }}>
-        <h2>Edit Bill</h2>
-        {editedData && (
-          <button className="btn-primary" onClick={handleConfirm}>
-            Save Changes
-          </button>
-        )}
-      </div>
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full">
 
-      <div className="grid-3-col" style={{ flex: 1, minHeight: 0 }}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Edit Bill</h1>
+              <p className="text-sm text-gray-500">Modify expenses and splits</p>
+            </div>
+          </div>
+          {editedData && (
+            <button
+              onClick={handleConfirm}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+            >
+              <Save className="mr-2 h-5 w-5" />
+              Save Changes
+            </button>
+          )}
+        </div>
 
-        {/* Left: Image Preview & Summary */}
-        <div className="scroll-y" style={{ paddingRight: '1rem' }}>
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Receipt Image</h3>
-            <div style={{
-              height: '400px',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
-              backgroundColor: '#f5f5f5',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+        {/* Editor - 3 Columns */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-200px)] min-h-[600px]">
+
+          {/* Column 1: Receipt Preview (3 cols) */}
+          <div className="xl:col-span-3 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
+              <span>Original Image</span>
+            </div>
+            <div className="flex-1 bg-gray-900 p-4 flex items-center justify-center overflow-auto relative">
               {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="Receipt preview"
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                />
+                <img src={previewUrl} alt="Receipt" className="max-w-full max-h-full object-contain rounded shadow-lg" />
               ) : (
-                <span style={{ color: 'var(--text-light)' }}>No image uploaded</span>
+                <div className="text-gray-500 text-sm">No image available</div>
+              )}
+            </div>
+            {/* Summary Card at bottom left */}
+            <div
+              onClick={handleSelectSummary}
+              className={`p-4 border-t cursor-pointer transition-colors ${isEditingSummary ? 'bg-indigo-50 border-indigo-200' : 'bg-white hover:bg-gray-50'}`}
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-bold text-gray-900">Bill Summary</h4>
+                {isEditingSummary && <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">Editing</span>}
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-gray-500"><span>Subtotal:</span><span>${editedData.subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-gray-500"><span>Tax:</span><span>${editedData.tax.toFixed(2)}</span></div>
+                <div className="flex justify-between text-gray-500"><span>Discount:</span><span>-${editedData.totalDiscount.toFixed(2)}</span></div>
+                <div className="flex justify-between text-gray-500"><span>Rounding:</span><span>+-${editedData.rounding.toFixed(2)}</span></div>
+
+                <div className="flex justify-between font-bold text-lg text-gray-900 pt-2 border-t mt-2">
+                  <span>Total: </span>
+                  <span className="text-indigo-600">${editedData.totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: Items List (5 cols) */}
+          <div className="xl:col-span-5 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
+              <span>Items ({editedData.items.length})</span>
+              <button onClick={addNewItem} className="text-indigo-600 text-xs font-bold hover:underline flex items-center gap-1">
+                <Plus size={14} /> Add Item
+              </button>
+            </div>
+
+            <div className="p-4 border-b bg-gray-50/[0.5]">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Paid By</label>
+              <select
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                value={paidById || ''}
+                onChange={(e) => setPaidById(e.target.value)}
+              >
+                <option value="">Select Payer...</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
+              </select>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {editedData.items.map((item, index) => {
+                const splits = itemSplits.get(index) || []
+                const totalSplit = getTotalSplitAmount(index)
+                const isFullyAssigned = Math.abs(totalSplit - item.totalPrice) < 0.01
+                const isSelected = selectedItemIndex === index
+
+                return (
+                  <div
+                    key={item.tempItemId}
+                    onClick={() => handleSelectItem(index)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div>
+                        <span className="font-semibold text-gray-900">{item.quantity}x {item.name}</span>
+                        {item.quantity > 1 && <span className="text-xs text-gray-400 block">@ ${item.unitPrice}/ea</span>}
+                      </div>
+                      <div className="font-mono font-medium">${item.totalPrice.toFixed(2)}</div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-2">
+                      {splits.length > 0 ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${isFullyAssigned ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          {splits.length} assigned • ${totalSplit.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                          Unassigned
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Column 3: Edit Details (4 cols) */}
+          <div className="xl:col-span-4 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex justify-between items-center">
+              <span>{isEditingSummary ? 'Edit Bill Details' : selectedItemIndex !== null ? 'Edit Item' : 'Bill Details'}</span>
+              {!isEditingSummary && selectedItemIndex !== null && (
+                <button 
+                  onClick={() => removeItem(selectedItemIndex)} 
+                  className="text-red-500 hover:text-red-700 text-xs flex items-center gap-1 font-bold"
+                >
+                  <Trash2 size={14} /> Remove Item
+                </button>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {isEditingSummary ? (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Bill Title</label>
+                    <input type="text" value={editedData.title || ''} onChange={e => setEditedData({ ...editedData, title: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Restaurant Name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Merchant Name</label>
+                    <input type="text" value={editedData.merchantName || ''} onChange={e => setEditedData({ ...editedData, merchantName: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Restaurant Name" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Subtotal</label>
+                      <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      value={editedData.subtotal} 
+                      onChange={e => setEditedData({ ...editedData, subtotal: parseFloat(e.target.value) || 0 })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Tax %</label>
+                        <input 
+                        type="number" 
+                        min="0"
+                        step="0.01"
+                        value={editedData.taxPercentage || 0} 
+                        onChange={(e) => {
+                          const rate = parseFloat(e.target.value) || 0;
+                          const res = recalculateItemAndBill(editedData.items, rate, editedData.rounding);
+                          setEditedData({ ...editedData, taxPercentage: rate, ...res });
+                        }} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Tax Amount</label>
+                        <input 
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editedData.tax} 
+                        onChange={e => setEditedData({ ...editedData, tax: parseFloat(e.target.value) || 0 })} 
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Discount</label>
+                      <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      value={editedData.totalDiscount} 
+                      onChange={e => setEditedData({ ...editedData, totalDiscount: parseFloat(e.target.value) || 0 })} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Rounding +-</label>
+                      <input 
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editedData.rounding} 
+                      onChange={e => setEditedData({ ...editedData, rounding: parseFloat(e.target.value) || 0 })} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                    <input 
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editedData.totalAmount || 0} 
+                    onChange={e => setEditedData({ ...editedData, totalAmount: parseFloat(e.target.value) || 0 })} 
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+                </div>
+              ) : selectedItemIndex !== null && editedData.items[selectedItemIndex] ? (
+                <div className="space-y-6">
+                  {/* <div className="flex justify-end">
+                    <button onClick={() => removeItem(selectedItemIndex)} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
+                      <Trash2 size={14} /> Remove Item
+                    </button>
+                  </div> */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Item Name</label>
+                    <input type="text" value={editedData.items[selectedItemIndex].name} onChange={e => updateItem(selectedItemIndex, 'name', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                      <input 
+                      type="number" 
+                      min="0"
+                      step="1"
+                      value={editedData.items[selectedItemIndex].quantity} 
+                      onChange={e => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Unit Price</label>
+                      <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      value={editedData.items[selectedItemIndex].unitPrice} 
+                      onChange={e => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                    
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700">Tax</label>
+                      <input 
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editedData.items[selectedItemIndex].tax || 0} 
+                      onChange={e => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Discount</label>
+                      <input 
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editedData.items[selectedItemIndex].discount} 
+                      onChange={e => updateItem(selectedItemIndex, 'discount', parseFloat(e.target.value) || 0)} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Total Price</label>
+                    <input 
+                      type="number"
+                      step="0.01"
+                      disabled={true}
+                      value={editedData.items[selectedItemIndex].totalPrice} 
+                      onChange={e => updateItem(selectedItemIndex, 'totalPrice', parseFloat(e.target.value) || 0)} 
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea 
+                    value={editedData.items[selectedItemIndex].description} 
+                    onChange={e => updateItem(selectedItemIndex, 'name', e.target.value)} 
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                  </div>
+
+                  <div className="border-t pt-4 mt-2">
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="block text-sm font-medium text-gray-700">Split Between</label>
+                      <button onClick={() => splitEvenly(selectedItemIndex)} className="text-indigo-600 text-xs font-semibold hover:underline">Split Evenly</button>
+                    </div>
+                    {/* <div className="flex flex-wrap gap-2">
+                      {loadingUsers ? <p className="text-sm text-gray-400">Loading names...</p> : users.map(u => {
+                        const splits = itemSplits.get(selectedItemIndex) || []
+                        const isSelected = splits.some(s => s.userId === u.id)
+                        return (
+                          <button
+                            key={u.id}
+                            onClick={() => toggleItemParticipant(selectedItemIndex, u.id)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${isSelected ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                          >
+                            {u.name || u.email?.substring(0, 6)}
+                          </button>
+                        )
+                      })}
+                    </div> */}
+                                        <div className="space-y-3">
+                      {loadingUsers ? (
+                        <p className="text-sm text-gray-400">Loading names...</p>
+                      ) : (
+                        users.map(u => {
+                          const splits = itemSplits.get(selectedItemIndex) || []
+                          const split = splits.find(s => s.userId === u.id)
+                          const isSelected = !!split
+
+                          return (
+                            <div key={u.id} className="flex items-center justify-between gap-4 p-2 rounded-lg border border-gray-100">
+                              <button
+                                onClick={() => toggleItemParticipant(selectedItemIndex, u.id)}
+                                className={`flex-1 text-left px-3 py-1.5 rounded-md text-sm font-medium transition-all ${isSelected ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                              >
+                                {u.name || u.email?.substring(0, 6)}
+                              </button>
+                              {isSelected && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 text-sm">$</span>
+                                  <input
+                                    type="number"
+                                    value={split.amount || 0}
+                                    onChange={(e) => updateSplitAmount(selectedItemIndex, u.id, parseFloat(e.target.value) || 0)}
+                                    className="w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    step="0.01"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 text-center">
+                  <FileText size={48} className="mb-4 text-gray-200" />
+                  <p>Select an item from the list <br />or the summary to edit details.</p>
+                </div>
               )}
             </div>
           </div>
-
-          {/* Summary Section */}
-          <div
-            className={`card clickable ${isEditingSummary ? 'ring-2 ring-primary' : ''}`}
-            onClick={handleSelectSummary}
-            style={{
-              borderColor: isEditingSummary ? 'var(--primary)' : 'var(--border)',
-              backgroundColor: isEditingSummary ? 'var(--primary-light)' : 'var(--bg-surface)'
-            }}
-          >
-            <h4 style={{ marginBottom: '1rem' }}>Bill Summary</h4>
-            <div style={{ fontSize: '0.95rem' }}>
-              <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Subtotal:</span>
-                <span>${editedData.subtotal?.toFixed(2) || '0.00'}</span>
-              </div>
-              <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Tax ({editedData.taxPercentage?.toFixed(2)}%):</span>
-                <span>${editedData.tax?.toFixed(2) || '0.00'}</span>
-              </div>
-              <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Discount:</span>
-                <span>-${editedData.totalDiscount?.toFixed(2) || '0.00'}</span>
-              </div>
-              <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Rounding:</span>
-                <span>${editedData.rounding?.toFixed(2) || '0.00'}</span>
-              </div>
-              <div className="flex-between" style={{ fontWeight: 'bold', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.5rem', fontSize: '1.1rem' }}>
-                <span>Total:</span>
-                <span style={{ color: 'var(--primary)' }}>${editedData.totalAmount?.toFixed(2) || '0.00'}</span>
-              </div>
-            </div>
-          </div>
         </div>
-
-        {/* Middle: Items List */}
-        <div className="scroll-y" style={{ paddingRight: '1rem' }}>
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <label>Who paid?</label>
-            <select value={paidById || ''} onChange={(e) => setPaidById(e.target.value)}>
-              <option value="">Select Payer</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>{user.name || user.email}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-between" style={{ marginBottom: '1rem' }}>
-            <h3>Items ({editedData.items.length})</h3>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {editedData.items.map((item, index) => {
-              const splits = itemSplits.get(index) || []
-              const totalSplit = getTotalSplitAmount(index)
-              const isFullyAssigned = Math.abs(totalSplit - item.totalPrice) < 0.01
-              const isSelected = selectedItemIndex === index;
-
-              return (
-                <div
-                  key={index}
-                  onClick={() => handleSelectItem(index)}
-                  className={`card clickable ${isSelected ? 'ring-2 ring-primary' : ''}`}
-                  style={{
-                    padding: '1rem',
-                    border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
-                    backgroundColor: isSelected ? 'var(--primary-light)' : (isFullyAssigned ? 'var(--secondary-light)' : 'var(--bg-surface)'),
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <div className="flex-between" style={{ marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: '600' }}>
-                      {item.quantity}x {item.name}
-                    </div>
-                    <div style={{ marginLeft: '1rem' }}>${item.totalPrice.toFixed(2)}</div>
-                  </div>
-
-                  {splits.length > 0 ? (
-                    <div style={{ fontSize: '0.85rem', color: isFullyAssigned ? 'var(--secondary-hover)' : 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span className={`badge ${isFullyAssigned ? 'badge-success' : 'badge-warning'}`}>
-                        {splits.length} person(s)
-                      </span>
-                      <span>${totalSplit.toFixed(2)} assigned</span>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
-                      No one assigned
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          <button
-            onClick={addNewItem}
-            className="btn-outline"
-            style={{ width: '100%', marginTop: '1rem', borderStyle: 'dashed' }}
-          >
-            + Add New Item
-          </button>
-        </div>
-
-        {/* Right: Item Detail Panel */}
-        <div className="scroll-y card" style={{ height: 'fit-content' }}>
-          {isEditingSummary ? (
-            <div>
-              <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Edit Bill Summary</h3>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <div className="form-group">
-                  <label>Bill Title</label>
-                  <input
-                    type="text"
-                    value={editedData.title || ''}
-                    onChange={(e) => setEditedData({ ...editedData, title: e.target.value })}
-                    placeholder="e.g., Dinner at McDonald's"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Merchant Name</label>
-                  <input
-                    type="text"
-                    value={editedData.merchantName || ''}
-                    onChange={(e) => setEditedData({ ...editedData, merchantName: e.target.value })}
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label>Subtotal</label>
-                    <input type="number" value={editedData.subtotal} onChange={(e) => setEditedData({ ...editedData, subtotal: parseFloat(e.target.value) || 0 })} />
-                  </div>
-                  <div>
-                    <label>Tax (%)</label>
-                    <input
-                      type="number"
-                      value={editedData.taxPercentage || 0}
-                      onChange={(e) => {
-                        const newRate = parseFloat(e.target.value) || 0;
-                        const results = recalculateItemAndBill(editedData.items, newRate, editedData.rounding);
-                        setEditedData({ ...editedData, taxPercentage: newRate, ...results });
-                      }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label>Discount</label>
-                    <input type="number" value={editedData.totalDiscount} onChange={(e) => setEditedData({ ...editedData, totalDiscount: parseFloat(e.target.value) || 0 })} />
-                  </div>
-                  <div>
-                    <label>Rounding</label>
-                    <input type="number" value={editedData.rounding} onChange={(e) => setEditedData({ ...editedData, rounding: parseFloat(e.target.value) || 0 })} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ fontWeight: 'bold' }}>Total Amount</label>
-                  <input type="number" value={editedData.totalAmount} onChange={(e) => setEditedData({ ...editedData, totalAmount: parseFloat(e.target.value) || 0 })} />
-                </div>
-              </div>
-            </div>
-          ) : (selectedItemIndex !== null && editedData.items[selectedItemIndex]) ? (
-            <div>
-              <div className="flex-between" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0 }}>Item Details</h3>
-                <button
-                  className="btn-danger btn-sm"
-                  onClick={() => removeItem(selectedItemIndex)}
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div className="form-group">
-                <label>Name</label>
-                <input
-                  type="text"
-                  value={editedData.items[selectedItemIndex].name}
-                  onChange={(e) => updateItem(selectedItemIndex, 'name', e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label>Quantity</label>
-                  <input
-                    type="number"
-                    value={editedData.items[selectedItemIndex].quantity}
-                    onChange={(e) => updateItem(selectedItemIndex, 'quantity', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <label>Unit Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editedData.items[selectedItemIndex].unitPrice}
-                    onChange={(e) => updateItem(selectedItemIndex, 'unitPrice', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label>Tax Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editedData.items[selectedItemIndex].tax}
-                    onChange={(e) => updateItem(selectedItemIndex, 'tax', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <label>Discount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editedData.items[selectedItemIndex].discount}
-                    onChange={(e) => updateItem(selectedItemIndex, 'discount', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-                <textarea
-                  value={editedData.items[selectedItemIndex].description}
-                  onChange={(e) => updateItem(selectedItemIndex, 'description', e.target.value)}
-                  rows={3}
-                />
-              </div>
-
-              {/* Participant Assignment Section */}
-              <div style={{ borderTop: '2px solid var(--border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-                <div className="flex-between" style={{ marginBottom: '1rem' }}>
-                  <h4 style={{ margin: 0 }}>Assign To</h4>
-                  <button
-                    type="button"
-                    onClick={() => splitEvenly(selectedItemIndex)}
-                    className="btn-secondary btn-sm"
-                  >
-                    Split Evenly
-                  </button>
-                </div>
-
-                {loadingUsers ? (
-                  <p>Loading users...</p>
-                ) : users.length === 0 ? (
-                  <p style={{ color: 'var(--text-secondary)' }}>No other users in this trip.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {users.map(user => {
-                      const splits = itemSplits.get(selectedItemIndex) || []
-                      const isSelected = splits.some(s => s.userId === user.id)
-
-                      return (
-                        <div
-                          key={user.id}
-                          onClick={() => toggleItemParticipant(selectedItemIndex, user.id)}
-                          className={`clickable badge ${isSelected ? 'badge-success' : 'badge-neutral'}`}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            fontSize: '0.9rem',
-                            border: isSelected ? '1px solid var(--secondary)' : '1px solid var(--border)',
-                          }}
-                        >
-                          {user.name || user.email || user.id.substring(0, 8)}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4rem' }}>
-              Select an item or the summary to edit details
-            </div>
-          )}
-        </div>
-      </div>
+      </main>
     </div>
   )
 }
