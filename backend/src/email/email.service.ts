@@ -4,12 +4,14 @@ const nodemailer = require('nodemailer');
 
 export class MailService {
   private transporter;
-
+ 
   constructor() {
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
-      secure: false,
+      secure: true, 
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
