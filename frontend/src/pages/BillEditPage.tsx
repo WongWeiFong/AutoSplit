@@ -434,11 +434,11 @@ export default function BillEditPage() {
         </div>
 
         {/* Editor - 3 Columns */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-200px)] min-h-[600px]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
 
           {/* Column 1: Receipt Preview (3 cols) */}
-          <div className="xl:col-span-3 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
+          <div className="xl:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
               <span>Original Image</span>
             </div>
             <div className="flex-1 bg-gray-900 p-4 flex items-center justify-center overflow-auto relative">
@@ -472,8 +472,8 @@ export default function BillEditPage() {
           </div>
 
           {/* Column 2: Items List (5 cols) */}
-          <div className="xl:col-span-5 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
+          <div className="xl:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
               <span>Items ({editedData.items.length})</span>
               <button onClick={addNewItem} className="text-indigo-600 text-xs font-bold hover:underline flex items-center gap-1">
                 <Plus size={14} /> Add Item
@@ -531,8 +531,8 @@ export default function BillEditPage() {
           </div>
 
           {/* Column 3: Edit Details (4 cols) */}
-          <div className="xl:col-span-4 flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex justify-between items-center">
+          <div className="xl:col-span-4 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex justify-between items-center">
               <span>{isEditingSummary ? 'Edit Bill Details' : selectedItemIndex !== null ? 'Edit Item' : 'Bill Details'}</span>
               {!isEditingSummary && selectedItemIndex !== null && (
                 <button 

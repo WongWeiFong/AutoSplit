@@ -47,7 +47,7 @@ const HomePage = () => {
 
           {/* Mobile Menu Toggle */}
           <button
-            className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors md:!block"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -56,11 +56,11 @@ const HomePage = () => {
 
         {/* Mobile Nav Dropdown */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-100 bg-white px-6 py-4 shadow-xl animate-fade-in">
+          <div className="!md:hidden border-t border-gray-100 bg-white px-6 py-4 shadow-xl animate-fade-in">
             <div className="flex flex-col space-y-4">
               <a href="#features" className="text-gray-600 font-medium py-2" onClick={() => setIsMenuOpen(false)}>Features</a>
               <a href="#how-it-works" className="text-gray-600 font-medium py-2" onClick={() => setIsMenuOpen(false)}>How It Works</a>
-              <Link to="/login" className="text-gray-600 font-medium py-2" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
+              <a href="#testimonials" className="text-gray-600 font-medium py-2" onClick={() => setIsMenuOpen(false)}>Stories</a>
               <Link
                 to="/login"
                 className="bg-indigo-600 !text-white hover:!text-white px-5 py-3 rounded-lg text-center font-medium shadow-md"
