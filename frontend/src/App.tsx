@@ -11,6 +11,7 @@ import BillEditPage from "./pages/BillEditPage";
 import AuthCallback from "./auth/AuthCallBack";
 import AcceptInvite from "./pages/AcceptInvite";
 import TripMembersPage from "./pages/TripMembersPage";
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/bills/:billId/edit" element={<RequireAuth><BillEditPage /></RequireAuth>} />
         <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/trips/:tripId/members" element={<RequireAuth><TripMembersPage /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
       </Routes>

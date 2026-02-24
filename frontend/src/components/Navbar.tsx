@@ -32,9 +32,9 @@ export default function Navbar() {
                         <Link to="/trips" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                             My Trips
                         </Link>
-                        <button className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <Link to="/profile" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium transition-colors">
                             Profile
-                        </button>
+                        </Link>
                         <div className="h-6 w-px bg-gray-200 mx-2"></div>
                         <button
                             onClick={handleSignOut}
@@ -63,9 +63,14 @@ export default function Navbar() {
                         <Link
                             to="/trips"
                             className="block pl-3 pr-4 py-2 border-l-4 border-indigo-500 text-base font-medium text-indigo-700 bg-indigo-50"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
+                            onClick={() => setIsMenuOpen(false)}>
                             My Trips
+                        </Link>
+                        <Link
+                            to="/profile"
+                            className="block pl-3 pr-4 py-2 border-l-4 border-indigo-500 text-base font-medium text-indigo-700 bg-indigo-50"
+                            onClick={() => setIsMenuOpen(false)}>
+                            Profile
                         </Link>
                         <button
                             onClick={() => {
