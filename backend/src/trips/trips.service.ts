@@ -1,14 +1,12 @@
 import { Injectable, ForbiddenException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { randomUUID } from 'crypto';
-import { MailService } from '../email/email.service';
 
 
 @Injectable()
 export class TripsService {
   constructor(
-    private readonly prisma: PrismaService, 
-    private readonly mailService: MailService) {}
+    private readonly prisma: PrismaService) {}
 
   async createTrip(authUser: any, tripName: string) {
     const userId = authUser.id;      // works for Google + email
@@ -201,10 +199,8 @@ export class TripsService {
     });
   
     const inviteLink = `${process.env.FRONTEND_URL}/invite/${token}`;
-  
-    await this.mailService.sendInvite(email, inviteLink);
-  
-    return { success: true };
+      
+    return { success: true, inviteLink};
   }
 
   async removeMember(tripId: string, ownerId: string, memberId: string) {

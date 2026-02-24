@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserPlus, Trash2, Crown, Mail, Shield, User } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import emailjs from '@emailjs/browser';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -52,10 +53,26 @@ export default function TripMembersPage() {
     setLoading(false);
 
     if (!res.ok) {
+      setLoading(false);
       alert('Failed to send invite');
       return;
     }
 
+    const { inviteLink } = await res.json(); // get the link returned by backend
+
+    await emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID,
+      import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+      {
+        to_email: email,
+        invite_link: inviteLink,
+        trip_name: tripName,
+        inviter_name: ownerMember?.user.name,
+      },
+      import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+    );
+  
+    setLoading(false);
     alert('Invite sent!');
     setEmail('');
   };
