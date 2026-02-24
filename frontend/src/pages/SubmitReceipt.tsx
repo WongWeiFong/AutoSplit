@@ -416,15 +416,6 @@ export default function SubmitReceiptPage() {
               <p className="text-sm text-gray-500">Scan and verify bill details</p>
             </div>
           </div>
-          {editedData && (
-            <button
-              onClick={handleConfirm}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-            >
-              <Save className="mr-2 h-5 w-5" />
-              Confirm & Save
-            </button>
-          )}
         </div>
 
         {/* Upload State */}
@@ -477,7 +468,7 @@ export default function SubmitReceiptPage() {
             <div className="xl:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-100 bg-gray-50 font-medium text-gray-700 flex items-center justify-between">
                 <span>Original Receipt</span>
-                <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+                {/* <button onClick={() => setPreviewUrl(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button> */}
               </div>
               <div className="flex-1 bg-gray-900 p-4 flex items-center justify-center overflow-auto relative">
                 <img src={previewUrl} alt="Receipt" className="max-w-full max-h-full object-contain rounded shadow-lg" />
@@ -798,6 +789,20 @@ export default function SubmitReceiptPage() {
           </div>
           </div>
         )}
+        <div className="sticky bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 mt-6 z-30">
+          <div className="max-w-4xl mx-auto flex justify-center">
+            {editedData && (
+            <button
+              onClick={handleConfirm}
+              disabled={loading}
+              className="w-full sm:w-auto min-w-[200px] bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Save className="mr-2 h-8 w-8" />
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   )

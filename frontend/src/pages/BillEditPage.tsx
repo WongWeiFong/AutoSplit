@@ -422,15 +422,6 @@ export default function BillEditPage() {
               <p className="text-sm text-gray-500">Modify expenses and splits</p>
             </div>
           </div>
-          {editedData && (
-            <button
-              onClick={handleConfirm}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-            >
-              <Save className="mr-2 h-5 w-5" />
-              Save Changes
-            </button>
-          )}
         </div>
 
         {/* Editor - 3 Columns */}
@@ -763,6 +754,20 @@ export default function BillEditPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+        <div className="sticky bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 mt-6 z-30">
+          <div className="max-w-4xl mx-auto flex justify-center">
+            {editedData && (
+            <button
+              onClick={handleConfirm}
+              disabled={loading}
+              className="w-full sm:w-auto min-w-[200px] bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Save className="mr-2 h-8 w-8" />
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+            )}
           </div>
         </div>
       </main>
