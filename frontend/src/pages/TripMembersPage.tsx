@@ -209,7 +209,7 @@ export default function TripMembersPage() {
                       placeholder="friend@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 block w-full rounded-lg border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="!pl-10 block w-full rounded-lg border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
                   <button

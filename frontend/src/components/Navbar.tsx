@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { LogOut, User, Zap, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import logoTitle from '../assets/autosplit_title.png';
 
 export default function Navbar() {
     const navigate = useNavigate();
@@ -10,7 +11,7 @@ export default function Navbar() {
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
-        navigate('/login');
+        navigate('/');
     };
 
     return (
@@ -19,11 +20,12 @@ export default function Navbar() {
                 <div className="flex justify-between h-16">
                     <div className="flex">
                         <Link to="/trips" className="flex-shrink-0 flex items-center gap-2 group">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
-                                <Zap size={18} fill="currentColor" />
-                            </div>
-                            <span className="text-xl font-bold text-gray-900 tracking-tight">AutoSplit</span>
-                        </Link>
+                            <img 
+                                src={logoTitle} 
+                                alt="AutoSplit" 
+                                className="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-300" 
+                            />
+                            </Link>
                     </div>
 
                     <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">

@@ -14,6 +14,7 @@ import {
   Smartphone,
   Star
 } from 'lucide-react';
+import logoTitle from '../assets/autosplit_title.png';
 
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -24,14 +25,13 @@ const HomePage = () => {
       {/* ================= NAVBAR ================= */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform duration-300">
-              <Zap size={20} fill="currentColor" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-gray-900 group-hover:text-indigo-600 transition-colors">
-              AutoSplit
-            </span>
-          </Link>
+        <Link to="/" className="flex items-center group">
+          <img 
+            src={logoTitle} 
+            alt="AutoSplit" 
+            className="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-300" 
+          />
+        </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-600">
@@ -40,7 +40,7 @@ const HomePage = () => {
             <a href="#testimonials" className="hover:text-indigo-600 transition-colors">Stories</a>
             <Link
               to="/login"
-              className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-300 flex items-center gap-2">
+              className="bg-indigo-600 !text-white hover:!text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-300 flex items-center gap-2">
               Get Started <ArrowRight size={16} />
             </Link>
           </nav>
@@ -63,7 +63,7 @@ const HomePage = () => {
               <Link to="/login" className="text-gray-600 font-medium py-2" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
               <Link
                 to="/login"
-                className="bg-indigo-600 text-white px-5 py-3 rounded-lg text-center font-medium shadow-md"
+                className="bg-indigo-600 !text-white hover:!text-white px-5 py-3 rounded-lg text-center font-medium shadow-md"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Get Started Free
@@ -100,7 +100,7 @@ const HomePage = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 to="/login"
-                className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
+                className="bg-indigo-600 !text-white hover:!text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2"
               >
                 Start Splitting Free <ArrowRight size={20} />
               </Link>
@@ -359,10 +359,11 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12 mb-16">
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-                <Zap size={16} fill="currentColor" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">AutoSplit</span>
+              <img 
+                src={logoTitle} 
+                alt="AutoSplit" 
+                className="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-300" 
+              />
             </div>
             <p className="text-gray-500 text-sm leading-relaxed">
               The easiest way to track expenses and settle debts with friends, roommates, and family.

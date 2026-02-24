@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { SignInWithGoogle } from './SignInWithGoogle';
-import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
+import logoTitle from '../assets/autosplit_title.png';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -36,12 +37,22 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8 relative z-10 animate-fade-in">
+        {/* Back Button */}
+      <div className="absolute top-8 left-8 z-20">
+        <Link 
+          to="/" 
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors group"
+        >
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+        </Link>
+      </div>
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-2 group">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
-              <span className="font-bold text-xl">A</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-900 tracking-tight">AutoSplit</span>
+          <img 
+            src={logoTitle} 
+            alt="AutoSplit" 
+            className="h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-300" 
+          />
           </Link>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h2>
           <p className="text-gray-500 text-sm">Sign in to manage your shared expenses</p>
@@ -58,7 +69,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="!pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="you@example.com"
               />
             </div>
@@ -77,7 +88,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="!pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="••••••••"
                 onKeyDown={(e) => e.key === 'Enter' && login()}
               />
@@ -116,12 +127,12 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="mt-8 text-center text-sm text-gray-500">
+        {/* <p className="mt-8 text-center text-sm text-gray-500">
           Don't have an account?{' '}
           <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
             Sign up for free
           </a>
-        </p>
+        </p> */}
       </div>
 
       <p className="mt-8 text-center text-xs text-gray-400">
