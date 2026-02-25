@@ -10,12 +10,13 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { UsersModule } from './users/users.module';
 import { TripsModule } from './trips/trips.module';
 import { InvitesModule } from './invites/invites.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [PrismaModule, BillsModule, TripsModule, InvitesModule, ConfigModule.forRoot({
     isGlobal: true,
   }), ReceiptsModule, SupabaseModule, UsersModule],
-  controllers: [TestController],
+  controllers: [TestController, HealthController],
   providers: [],
   // providers: [AppService],
 })
