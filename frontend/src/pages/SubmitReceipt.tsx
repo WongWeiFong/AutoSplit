@@ -316,6 +316,24 @@ export default function SubmitReceiptPage() {
   const handleConfirm = async () => {
     if (!responseData || !editedData) return
 
+    const validationErrors: string[] = [];
+    if (!paidById) validationErrors.push("Please select who paid the bill.");
+    if (!editedData.title) validationErrors.push("Bill title is required.");
+    if (!editedData.merchantName) validationErrors.push("Merchant name is required.");
+    
+    // Check if all items are fully assigned
+    editedData.items.forEach((item, index) => {
+      const totalSplit = getTotalSplitAmount(index);
+      if (Math.abs(totalSplit - item.totalPrice) > 0.02) {
+        validationErrors.push(`Item "${item.name}" is not fully split (Remaining: $${(item.totalPrice - totalSplit).toFixed(2)})`);
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      alert("Please fix the following issues:\n\n" + validationErrors.join("\n"));
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -393,9 +411,15 @@ export default function SubmitReceiptPage() {
       alert('Bill saved successfully!');
       navigate(`/trips/${tripId}`);
     } else {
-      const error = await res.json()
-      console.error('Error:', error)
-      alert('Failed to save bill')
+      const errorData = await res.json();
+      console.error('Error details:', errorData);
+      
+      // Check if the backend returned a specific message or an array of validation errors
+      const errorMessage = errorData.message 
+        ? (Array.isArray(errorData.message) ? errorData.message.join('\n') : errorData.message)
+        : 'An unknown error occurred';
+
+      alert(`Failed to save bill:\n${errorMessage}`);
     }
   }
 
@@ -508,7 +532,10 @@ export default function SubmitReceiptPage() {
             <div className="p-4 border-b bg-gray-50/[0.5]">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Paid By</label>
               <select
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                // className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className={`block w-full rounded-md shadow-sm sm:text-sm ${
+                  !paidById ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+                }`}
                 value={paidById || ''}
                 onChange={(e) => setPaidById(e.target.value)}
               >
