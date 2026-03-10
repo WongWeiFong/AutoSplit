@@ -233,27 +233,30 @@ export default function TripBillsPage() {
                     onClick={() => navigate(`/bills/${bill.id}/edit`)}
                     className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-xl">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="hidden sm:flex w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-xl">
                         {/* Icon based on category or first letter */}
                         {bill.title ? bill.title.charAt(0).toUpperCase() : 'B'}
                       </div>
 
-                      <div>
-                        <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{bill.title}</h4>
-                        <div className="flex items-center text-xs text-gray-500 mt-1 space-x-2">
-                          <span className="flex items-center">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors truncate">{bill.title}</h4>
+                        {/* <div className="flex items-center text-xs text-gray-500 mt-1 space-x-2"> */}
+                        <div className="flex flex-col sm:flex-row sm:items-center text-xs text-gray-500 mt-1 gap-y-1 sm:gap-y-0 sm:gap-x-2 min-w-0">
+                          <span className="flex items-center flex-shrink-0">
                             <Calendar size={12} className="mr-1" />
                             {new Date(bill.createdAt).toLocaleDateString()}
                           </span>
-                          <span>•</span>
-                          <span>{bill.merchantName || 'Unknown Merchant'}</span>
+                          <span className="hidden sm:inline flex-shrink-0">•</span>
+                          <span className="truncate font-medium sm:font-normal">
+                            {bill.merchantName || 'Unknown Merchant'}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                      <span className="font-bold text-lg text-gray-900">
+                    <div className="flex items-center gap-6 flex-shrink-0 ml-4">
+                      <span className="font-bold text-lg text-gray-900 whitespace-nowrap">
                         ${Number(bill.totalAmount).toFixed(2)}
                       </span>
 

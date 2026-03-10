@@ -718,7 +718,7 @@ export default function SubmitReceiptPage() {
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea 
                     value={editedData.items[selectedItemIndex].description} 
-                    onChange={e => updateItem(selectedItemIndex, 'name', e.target.value)} 
+                    onChange={e => updateItem(selectedItemIndex, 'description', e.target.value)} 
                     rows={3}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                   </div>
