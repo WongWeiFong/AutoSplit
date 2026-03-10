@@ -13,10 +13,18 @@ export class ReceiptsService {
 
   private async preprocessImage(buffer: Buffer): Promise<Buffer> {
     return sharp(buffer)
+      //1. original
+      // .grayscale()
+      // .normalize()
+      // .resize({ width: 1800 }) // upscale improves small fonts
+      // .threshold(150)          // makes text pop
+      // .toBuffer();
+      //2
+      .rotate()
+      .resize({ width: 1500 })
       .grayscale()
       .normalize()
-      .resize({ width: 1800 }) // upscale improves small fonts
-      .threshold(150)          // makes text pop
+      .jpeg()
       .toBuffer();
   }
 
