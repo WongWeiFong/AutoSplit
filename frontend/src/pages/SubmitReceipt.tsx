@@ -435,7 +435,6 @@ export default function SubmitReceiptPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
