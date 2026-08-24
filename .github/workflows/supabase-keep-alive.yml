@@ -2,11 +2,8 @@ name: Daily Supabase Keep-Alive
 
 on:
   schedule:
-    # Runs every day at 3:00 AM Malaysia time (UTC+8)
-    # GitHub Actions uses UTC, so 19:00 UTC = 03:00 MYT
     - cron: "0 19 * * *"
 
-  # Allows you to manually run it from GitHub
   workflow_dispatch:
 
 jobs:
@@ -16,9 +13,19 @@ jobs:
     steps:
       - name: Update Supabase keep-alive
         run: |
-          curl -i -X POST \
+          RESPONSE=$(curl -sS -w "\nHTTP_STATUS:%{http_code}" \
+            -X POST \
             "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/update_keep_alive" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}')
+
+          echo "$RESPONSE"
+
+          STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+
+          if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
+            echo "Supabase request failed!"
+            exit 1
+          fi
