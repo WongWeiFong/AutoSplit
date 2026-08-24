@@ -1,0 +1,24 @@
+name: Daily Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs every day at 3:00 AM Malaysia time (UTC+8)
+    # GitHub Actions uses UTC, so 19:00 UTC = 03:00 MYT
+    - cron: "0 19 * * *"
+
+  # Allows you to manually run it from GitHub
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update Supabase keep-alive
+        run: |
+          curl -X PATCH \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/keep_alive?id=eq.1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"last_ping":"now()"}'
