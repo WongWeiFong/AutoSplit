@@ -16,9 +16,9 @@ jobs:
     steps:
       - name: Update Supabase keep-alive
         run: |
-          curl -X PATCH \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/keep_alive?id=eq.1" \
+          curl -i -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/keep_alive" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{"last_ping":"now()"}'
+            -d '{}'
