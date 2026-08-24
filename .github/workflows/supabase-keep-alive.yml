@@ -17,7 +17,7 @@ jobs:
       - name: Update Supabase keep-alive
         run: |
           curl -i -X POST \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/keep_alive" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/update_keep_alive" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
